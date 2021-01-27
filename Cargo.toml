@@ -1,6 +1,6 @@
 [package]
 name = "lupinas-lullaby"
-version = "0.1.6"
+version = "0.1.7"
 authors = ["Hanif Bin Ariffin <hanif.ariffin.4326@gmail.com>"]
 edition = "2018"
 description = "Automatically generate TypeScript interfaces from a Swagger 2.0 spec."
