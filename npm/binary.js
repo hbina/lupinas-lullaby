@@ -14,7 +14,7 @@ const supportedPlatforms = [
     TYPE: "Windows_NT",
     ARCHITECTURE: "x64",
     RUST_TARGET: "x86_64-pc-windows-msvc",
-    BINARY_NAME: "lupinas-lullaby-win64",
+    BINARY_NAME: "lupinas-lullaby-win64.exe",
   },
   {
     TYPE: "Windows_NT",
