@@ -32,11 +32,11 @@ fn parse_schema_object_to_javascript_strings(schema: &Schema) -> JavaScriptType 
         // TODO(hbina): Handle the case for enums
         if let Some(format) = schema.format.as_ref() {
             match format.as_str() {
-                "date" | "date-time" => JavaScriptType::Typename(String::from("Date")),
-                _ => JavaScriptType::String,
+                "date" | "date-time" => JavaScriptType::typename("Date"),
+                _ => JavaScriptType::typename("String"),
             }
         } else {
-            JavaScriptType::String
+            JavaScriptType::typename("String")
         }
     }
 }
@@ -76,11 +76,12 @@ pub fn parse_schema_object_to_javascript_type(schema: &Schema) -> JavaScriptType
             }
             "string" => parse_schema_object_to_javascript_strings(schema),
             "object" => {
-                JavaScriptType::Object(parse_schema_object_to_javascript_row_triplets(schema))
+                JavaScriptType::AnonymousObject(parse_schema_object_to_javascript_row_triplets(schema))
             }
             // TODO(hbina): Narrow down the exact type later.
-            "integer" | "number" => JavaScriptType::Number,
-            "boolean" => JavaScriptType::Boolean,
+            "integer" | "number" => JavaScriptType::typename("number"),
+            "boolean" => JavaScriptType::typename("boolean"),
+            "unknown" => JavaScriptType::typename("unknown"),
             // TODO(hbina): It is entirely possile type of a schema object to just be a string.
             // I should think.
             // Actually, this case should not even be possible because `types` can take a limited set of values.
@@ -94,7 +95,7 @@ pub fn parse_schema_object_to_javascript_type(schema: &Schema) -> JavaScriptType
         // TODO(hbina): Revisit this case.
         // The specification does not say anything about the absent of this value.
         // It might be inherited from JSON SchemaObject. Look it up.
-        JavaScriptType::Any
+        JavaScriptType::typename("any")
     }
 }
 
@@ -134,14 +135,16 @@ pub fn use_spec3(spec: &Spec3) -> String {
 
 #[derive(Debug)]
 pub enum JavaScriptType {
-    Any,
-    String,
-    Number,
-    Boolean,
     Sum(Vec<Value>),
     Array(Box<JavaScriptType>),
     Typename(String),
-    Object(Vec<RowTriplet>),
+    AnonymousObject(Vec<RowTriplet>),
+}
+
+impl JavaScriptType {
+    pub fn typename<T: Into<String>>(str: T) -> JavaScriptType {
+        JavaScriptType::Typename(str.into())
+    }
 }
 
 #[derive(Debug)]
@@ -191,18 +194,6 @@ impl Display for RowTriplet {
 impl Display for JavaScriptType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            JavaScriptType::Any => {
-                write!(f, "any")
-            }
-            JavaScriptType::String => {
-                write!(f, "string")
-            }
-            JavaScriptType::Number => {
-                write!(f, "number")
-            }
-            JavaScriptType::Boolean => {
-                write!(f, "boolean")
-            }
             JavaScriptType::Sum(s) => {
                 let result = s
                     .iter()
@@ -233,7 +224,7 @@ impl Display for JavaScriptType {
             JavaScriptType::Typename(n) => {
                 write!(f, "{}", n)
             }
-            JavaScriptType::Object(o) => {
+            JavaScriptType::AnonymousObject(o) => {
                 write!(
                     f,
                     "{{{}}}",

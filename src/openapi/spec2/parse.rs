@@ -2,63 +2,71 @@ use super::spec::{Schema, Spec2};
 use std::fmt::Display;
 
 // TODO: Validate type at root is object?
-pub fn convert_schema_to_interface((name, schema): (&String, &Schema)) -> String {
-    let properties = schema
-        .properties
-        .as_ref()
-        .map(|x| x.iter().map(convert_property_to_member).collect::<Vec<_>>())
-        .unwrap_or_else(|| vec![]);
-    let members = properties
-        .iter()
-        .map(|(name, js_type)| {
-            let required = schema
-                .required
-                .as_ref()
-                .map(|y| y.contains(name))
-                .map(|y| if y { "?" } else { "" })
-                .unwrap_or("");
-            format!("\t{} {} : {};\n", name, required, js_type)
-        })
-        .collect::<String>();
-    format!(r##"export interface {} {{{}}}"##, name, members)
-}
-
-pub fn convert_property_to_member((name, schema): (&String, &Schema)) -> (String, JavaScriptType) {
-    let js_type = convert_schema_type_to_javascript_type(schema);
-    (name.clone(), js_type)
+pub fn convert_schema_to_anonymous_object(schema: &Schema) -> JavaScriptType {
+    if let Some(properties) = schema.properties.as_ref() {
+        let required_names = schema.required.as_ref();
+        let properties = properties
+            .iter()
+            .map(|(name, schema)| {
+                let required = required_names.map(|x| x.contains(&name)).unwrap_or(false);
+                let ttype = convert_schema_type_to_javascript_type(schema);
+                RowTriplet {
+                    name: String::from(name),
+                    required,
+                    ttype,
+                }
+            })
+            .collect::<Vec<RowTriplet>>();
+        JavaScriptType::AnonymousObject(properties)
+    } else {
+        JavaScriptType::AnonymousObject(vec![])
+    }
 }
 
 pub fn convert_schema_type_to_javascript_type(schema: &Schema) -> JavaScriptType {
     if let Some(r) = schema.ref_path.as_ref() {
-        JavaScriptType::Object(parse_reference(r))
+        JavaScriptType::Typename(parse_reference(r))
+    } else if let Some(all_of) = schema.all_of.as_ref() {
+        JavaScriptType::Product(
+            all_of
+                .iter()
+                .map(convert_schema_type_to_javascript_type)
+                .collect::<Vec<_>>(),
+        )
     } else if let Some(ttype) = schema.schema_type.as_ref() {
         match ttype.as_str() {
-            "integer" => JavaScriptType::Number,
+            "integer" | "number" => JavaScriptType::typename("Number"),
             "string" => {
                 if let Some(enums) = schema.enum_values.as_ref() {
-                    JavaScriptType::Enum(enums.clone())
+                    JavaScriptType::Sum(enums.clone())
                 } else if let Some(format) = schema.format.as_ref() {
                     match format.as_str() {
-                        "date-time" => JavaScriptType::Object("Date".to_string()),
-                        _ => JavaScriptType::String,
+                        "date-time" => JavaScriptType::typename("Date"),
+                        _ => JavaScriptType::typename("String"),
                     }
                 } else {
-                    JavaScriptType::String
+                    JavaScriptType::typename("String")
                 }
             }
-            "boolean" => JavaScriptType::Boolean,
+            "boolean" => JavaScriptType::typename("Boolean"),
             "array" => match schema.items.as_ref() {
                 Some(child_schema) => convert_schema_type_to_javascript_type(child_schema),
-                None => JavaScriptType::Any,
+                None => JavaScriptType::typename("any"),
             },
-            _ => JavaScriptType::Any,
+            "object" => convert_schema_to_anonymous_object(schema),
+            _ => JavaScriptType::typename("any"),
         }
     } else {
-        panic!(
-            "Cannot perform schema type => javascript type for schema:{:#?}",
-            schema
-        );
+        JavaScriptType::AnonymousObject(vec![])
     }
+}
+
+pub fn parse_root_schema_object_to_javascript_construct(
+    (name, schema): (&String, &Schema),
+) -> String {
+    let name = name.to_string();
+    let ttype = convert_schema_type_to_javascript_type(schema);
+    format!("export type {} = {}", name, ttype)
 }
 
 pub fn parse_reference(reference: &str) -> String {
@@ -77,23 +85,25 @@ pub fn use_spec2(spec: &Spec2) -> String {
     match spec.definitions.as_ref() {
         Some(definitions) => definitions
             .iter()
-            .map(convert_schema_to_interface)
-            .collect::<Vec<_>>()
-            .iter()
-            .map(|x| x.to_string())
-            .collect::<String>(),
+            .map(parse_root_schema_object_to_javascript_construct)
+            .collect::<Vec<String>>()
+            .join("\n"),
         None => String::new(),
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum JavaScriptType {
-    Any,
-    String,
-    Number,
-    Boolean,
-    Enum(Vec<String>),
-    Object(String),
+    Product(Vec<JavaScriptType>),
+    Sum(Vec<String>),
+    Typename(String),
+    AnonymousObject(Vec<RowTriplet>),
+}
+
+impl JavaScriptType {
+    pub fn typename<T: Into<String>>(str: T) -> JavaScriptType {
+        JavaScriptType::Typename(str.into())
+    }
 }
 
 impl Display for JavaScriptType {
@@ -102,11 +112,19 @@ impl Display for JavaScriptType {
             f,
             "{}",
             match self {
-                JavaScriptType::Any => "any".into(),
-                JavaScriptType::String => "string".into(),
-                JavaScriptType::Number => "number".into(),
-                JavaScriptType::Boolean => "boolean".into(),
-                JavaScriptType::Enum(names) => {
+                JavaScriptType::AnonymousObject(o) => {
+                    format!(
+                        "{{{}}}",
+                        o.iter().map(|r| { format!("{};", r) }).collect::<String>()
+                    )
+                }
+                JavaScriptType::Product(p) => {
+                    p.iter()
+                        .map(|x| format!("{}", x))
+                        .collect::<Vec<String>>()
+                        .join("&")
+                }
+                JavaScriptType::Sum(names) => {
                     let count = names.iter().len();
                     names
                         .iter()
@@ -118,8 +136,27 @@ impl Display for JavaScriptType {
                         })
                         .collect::<String>()
                 }
-                JavaScriptType::Object(o) => o.to_string(),
+                JavaScriptType::Typename(o) => o.to_string(),
             }
+        )
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct RowTriplet {
+    name: String,
+    required: bool,
+    ttype: JavaScriptType,
+}
+
+impl Display for RowTriplet {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} {} : {}",
+            self.name,
+            if self.required { "" } else { "?" },
+            self.ttype
         )
     }
 }

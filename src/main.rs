@@ -54,6 +54,7 @@ If this value is not specified, it will simply write to stdout.
         println!("Opening file `{}`", file);
         openapi::use_spec(&openapi::from_path(file))
     } else if let Some(url) = matches.value_of("url") {
+        println!("Opening url `{}`", url);
         let auth_username = matches.value_of("auth_user").unwrap_or("");
         let auth_password = matches.value_of("auth_password");
         let res = Client::new()
