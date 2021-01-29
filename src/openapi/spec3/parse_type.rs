@@ -1,8 +1,11 @@
-use super::spec::{ObjectOrReference, Ref, Schema, Spec3};
-use serde_yaml::Value;
-use std::fmt::Display;
+use crate::openapi::spec3::{
+    spec::{ObjectOrReference, Ref, Schema},
+    Spec3,
+};
 
-pub fn parse_reference(reference: &Ref) -> String {
+use super::types::{JavaScriptConstruct, JavaScriptType, RowTriplet, Spec3Error};
+
+fn parse_reference(reference: &Ref) -> String {
     let (prefix, name) = reference.ref_path.split_at("#/components/schemas/".len());
     if prefix == "#/components/schemas/" {
         String::from(name)
@@ -66,7 +69,7 @@ fn parse_schema_object_to_javascript_row_triplets(schema: &Schema) -> Vec<RowTri
 }
 
 // TODO(hbina): Reimplement this to return an intermediate object so we can log the transformation.
-pub fn parse_schema_object_to_javascript_type(schema: &Schema) -> JavaScriptType {
+fn parse_schema_object_to_javascript_type(schema: &Schema) -> JavaScriptType {
     // 1. Determine the schema type
     // 2. Call the corresponding functions
     if let Some(ttype) = schema.schema_type.as_ref() {
@@ -75,9 +78,9 @@ pub fn parse_schema_object_to_javascript_type(schema: &Schema) -> JavaScriptType
                 JavaScriptType::Array(Box::new(parse_schema_object_to_javascript_arrays(schema)))
             }
             "string" => parse_schema_object_to_javascript_strings(schema),
-            "object" => {
-                JavaScriptType::AnonymousObject(parse_schema_object_to_javascript_row_triplets(schema))
-            }
+            "object" => JavaScriptType::AnonymousObject(
+                parse_schema_object_to_javascript_row_triplets(schema),
+            ),
             // TODO(hbina): Narrow down the exact type later.
             "integer" | "number" => JavaScriptType::typename("number"),
             "boolean" => JavaScriptType::typename("boolean"),
@@ -99,7 +102,7 @@ pub fn parse_schema_object_to_javascript_type(schema: &Schema) -> JavaScriptType
     }
 }
 
-pub fn parse_root_schema_object_to_javascript_construct(
+fn parse_root_schema_object_to_javascript_construct(
     (name, schema): (&String, &ObjectOrReference<Schema>),
 ) -> JavaScriptConstruct {
     let name = name.to_string();
@@ -114,7 +117,7 @@ pub fn parse_root_schema_object_to_javascript_construct(
     }
 }
 
-pub fn use_spec3(spec: &Spec3) -> String {
+pub fn generate_types(spec: &Spec3) -> String {
     if let Some(components) = spec.components.as_ref() {
         if let Some(schemas) = components.schemas.as_ref() {
             let result = schemas
@@ -131,112 +134,4 @@ pub fn use_spec3(spec: &Spec3) -> String {
     } else {
         String::new()
     }
-}
-
-#[derive(Debug)]
-pub enum JavaScriptType {
-    Sum(Vec<Value>),
-    Array(Box<JavaScriptType>),
-    Typename(String),
-    AnonymousObject(Vec<RowTriplet>),
-}
-
-impl JavaScriptType {
-    pub fn typename<T: Into<String>>(str: T) -> JavaScriptType {
-        JavaScriptType::Typename(str.into())
-    }
-}
-
-#[derive(Debug)]
-pub enum JavaScriptConstruct {
-    Alias(String, JavaScriptType),
-}
-
-impl Display for JavaScriptConstruct {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            JavaScriptConstruct::Alias(name, ttype) => {
-                writeln!(f, "export type {} = {};", name, ttype)
-            }
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct RowTriplet {
-    name: String,
-    required: bool,
-    ttype: JavaScriptType,
-}
-
-impl RowTriplet {
-    pub fn from_triplet(name: String, required: bool, ttype: JavaScriptType) -> RowTriplet {
-        RowTriplet {
-            name,
-            required,
-            ttype,
-        }
-    }
-}
-
-impl Display for RowTriplet {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{} {} : {}",
-            self.name,
-            if self.required { "" } else { "?" },
-            self.ttype
-        )
-    }
-}
-
-impl Display for JavaScriptType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            JavaScriptType::Sum(s) => {
-                let result = s
-                    .iter()
-                    .map(|v| match v {
-                        Value::Null => format!("null"),
-                        Value::Bool(b) => {
-                            if *b {
-                                format!("true")
-                            } else {
-                                format!("false")
-                            }
-                        }
-                        Value::Number(n) => {
-                            format!("{}", n)
-                        }
-                        Value::String(s) => {
-                            format!("\"{}\"", s)
-                        }
-                        o => unimplemented!("Using {:#?} is not yet supported in Display", o),
-                    })
-                    .collect::<Vec<String>>()
-                    .join("|");
-                write!(f, "{}", result)
-            }
-            JavaScriptType::Array(a) => {
-                write!(f, "({})[]", a)
-            }
-            JavaScriptType::Typename(n) => {
-                write!(f, "{}", n)
-            }
-            JavaScriptType::AnonymousObject(o) => {
-                write!(
-                    f,
-                    "{{{}}}",
-                    o.iter().map(|r| { format!("{};", r) }).collect::<String>()
-                )
-            }
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum Spec3Error {
-    InvalidReference(Ref),
-    CannotConvertSchemaToArray(Schema),
 }

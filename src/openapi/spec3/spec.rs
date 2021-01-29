@@ -36,32 +36,32 @@ pub struct Spec3 {
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Path {
     #[serde(rename = "$ref", skip_serializing_if = "Option::is_none")]
-    ref_path: Option<ObjectOrReference<Box<Path>>>,
+    pub ref_path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    get: Option<Operation>,
+    pub get: Option<Operation>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    put: Option<Operation>,
+    pub put: Option<Operation>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    post: Option<Operation>,
+    pub post: Option<Operation>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    delete: Option<Operation>,
+    pub delete: Option<Operation>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    options: Option<Operation>,
+    pub options: Option<Operation>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    head: Option<Operation>,
+    pub head: Option<Operation>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    patch: Option<Operation>,
+    pub patch: Option<Operation>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    trace: Option<Operation>,
+    pub trace: Option<Operation>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Operation {
     #[serde(skip_serializing_if = "Option::is_none")]
-    operation_id: Option<String>,
+    pub operation_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    parameters: Option<Vec<ObjectOrReference<Parameter>>>,
-    responses: BTreeMap<String, ObjectOrReference<Response>>,
+    pub parameters: Option<Vec<ObjectOrReference<Parameter>>>,
+    pub responses: BTreeMap<String, ObjectOrReference<Response>>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
@@ -78,39 +78,39 @@ pub enum ParameterLocation {
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Parameter {
-    name: String,
+    pub name: String,
     #[serde(rename = "in")]
-    location: ParameterLocation,
+    pub location: ParameterLocation,
     #[serde(skip_serializing_if = "Option::is_none")]
-    required: Option<bool>,
+    pub required: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    deprecated: Option<bool>,
+    pub deprecated: Option<bool>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Response {
     #[serde(skip_serializing_if = " Option::is_none")]
-    headers: Option<BTreeMap<String, ObjectOrReference<Header>>>,
+    pub headers: Option<BTreeMap<String, ObjectOrReference<Header>>>,
     #[serde(skip_serializing_if = " Option::is_none")]
-    content: Option<BTreeMap<String, MediaType>>,
+    pub content: Option<BTreeMap<String, MediaType>>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct MediaType {
     #[serde(skip_serializing_if = " Option::is_none")]
-    schema: Option<ObjectOrReference<Schema>>,
+    pub schema: Option<ObjectOrReference<Schema>>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Header {
     #[serde(skip_serializing_if = " Option::is_none")]
-    required: Option<bool>,
+    pub required: Option<bool>,
     #[serde(skip_serializing_if = " Option::is_none")]
-    deprecated: Option<bool>,
+    pub deprecated: Option<bool>,
     #[serde(skip_serializing_if = " Option::is_none")]
-    allow_empty_value: Option<bool>,
+    pub allow_empty_value: Option<bool>,
     #[serde(skip_serializing_if = " Option::is_none")]
-    schema: Option<ObjectOrReference<Schema>>,
+    pub schema: Option<ObjectOrReference<Schema>>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
@@ -129,15 +129,15 @@ pub struct Info {
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct License {
-    name: String,
-    url: Option<String>,
+    pub name: String,
+    pub url: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Contact {
-    name: Option<String>,
-    url: Option<String>,
-    email: Option<String>,
+    pub name: Option<String>,
+    pub url: Option<String>,
+    pub email: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]

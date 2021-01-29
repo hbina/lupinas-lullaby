@@ -3,7 +3,7 @@ mod spec3;
 
 use self::{
     spec2::{use_spec2, Spec2},
-    spec3::{use_spec3, Spec3},
+    spec3::{generate_types, Spec3},
 };
 use serde::{Deserialize, Serialize};
 use std::{fs::File, io::Read, path::Path};
@@ -36,7 +36,7 @@ pub fn from_bytes(read: &[u8]) -> OpenApi {
 pub fn use_spec(spec: &OpenApi) -> String {
     match spec {
         OpenApi::V2(spec) => use_spec2(&spec),
-        OpenApi::V3(spec) => use_spec3(spec),
+        OpenApi::V3(spec) => generate_types(spec),
     }
 }
 
