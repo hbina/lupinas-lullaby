@@ -25,9 +25,119 @@ pub enum BooleanObjectOrReference<T> {
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Spec3 {
+    // TODO(hbina): Deserialize as [semantic version number](https://semver.org/spec/v2.0.0.html)
     pub openapi: String,
+    pub info: Info,
+    pub paths: BTreeMap<String, Path>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub components: Option<Components>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct Path {
+    #[serde(rename = "$ref", skip_serializing_if = "Option::is_none")]
+    ref_path: Option<ObjectOrReference<Box<Path>>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    get: Option<Operation>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    put: Option<Operation>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    post: Option<Operation>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    delete: Option<Operation>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    options: Option<Operation>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    head: Option<Operation>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    patch: Option<Operation>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    trace: Option<Operation>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct Operation {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    operation_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    parameters: Option<Vec<ObjectOrReference<Parameter>>>,
+    responses: BTreeMap<String, ObjectOrReference<Response>>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub enum ParameterLocation {
+    #[serde(rename = "query")]
+    Query,
+    #[serde(rename = "header")]
+    Header,
+    #[serde(rename = "path")]
+    Path,
+    #[serde(rename = "cookie")]
+    Cookie,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct Parameter {
+    name: String,
+    #[serde(rename = "in")]
+    location: ParameterLocation,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    required: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    deprecated: Option<bool>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct Response {
+    #[serde(skip_serializing_if = " Option::is_none")]
+    headers: Option<BTreeMap<String, ObjectOrReference<Header>>>,
+    #[serde(skip_serializing_if = " Option::is_none")]
+    content: Option<BTreeMap<String, MediaType>>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct MediaType {
+    #[serde(skip_serializing_if = " Option::is_none")]
+    schema: Option<ObjectOrReference<Schema>>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct Header {
+    #[serde(skip_serializing_if = " Option::is_none")]
+    required: Option<bool>,
+    #[serde(skip_serializing_if = " Option::is_none")]
+    deprecated: Option<bool>,
+    #[serde(skip_serializing_if = " Option::is_none")]
+    allow_empty_value: Option<bool>,
+    #[serde(skip_serializing_if = " Option::is_none")]
+    schema: Option<ObjectOrReference<Schema>>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct Info {
+    pub title: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(rename = "termsOfService", skip_serializing_if = "Option::is_none")]
+    pub terms_of_service: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub contact: Option<Contact>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub license: Option<License>,
+    pub version: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct License {
+    name: String,
+    url: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct Contact {
+    name: Option<String>,
+    url: Option<String>,
+    email: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]

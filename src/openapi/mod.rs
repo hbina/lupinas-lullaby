@@ -46,7 +46,9 @@ pub fn test_v2_json_examples() {
         .unwrap()
         .map(|res| res.unwrap().path())
         .filter(|path| path.is_file())
+        .inspect(|p| println!("test_v2_json_examples:{:#?}", p))
         .map(|x| from_path(x))
+        .inspect(|p| println!("test_v2_json_examples:{:#?}", p))
         .map(|spec| use_spec(&spec))
         .collect::<Vec<_>>();
 }
@@ -57,6 +59,7 @@ pub fn test_v2_yaml_examples() {
         .unwrap()
         .map(|res| res.unwrap().path())
         .filter(|path| path.is_file())
+        .inspect(|p| println!("test_v2_yaml_examples:{:#?}", p))
         .map(|x| from_path(x))
         .map(|spec| use_spec(&spec))
         .collect::<Vec<_>>();
@@ -68,7 +71,9 @@ pub fn test_v3_examples() {
         .unwrap()
         .map(|res| res.unwrap().path())
         .filter(|path| path.is_file())
+        .inspect(|p| println!("test_v3_examples:{:#?}", p))
         .map(|x| from_path(x))
+        .inspect(|p| println!("test_v3_examples:{:#?}", p))
         .map(|spec| use_spec(&spec))
         .collect::<Vec<_>>();
 }
