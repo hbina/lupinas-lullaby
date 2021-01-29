@@ -7,7 +7,7 @@ Parse Swagger files (v2 and v3) into a Typescript interface file.
 ```
 lupinas-lullaby 0.1.4
 Hanif Bin Ariffin <hanif.ariffin.4326@gmail.com>
-Automatically generate TypeScript interfaces from a Swagger 2.0 spec.
+Automatically generate TypeScript interfaces from a Swagger spec file.
 
 USAGE:
     lupinas-lullaby [OPTIONS]
@@ -30,7 +30,7 @@ OPTIONS:
 It doesn't have the best format ... but its a perfectly valid TS file. You will `prettier` this away anyways.
 
 ```
-lupinas-lullaby on  master is 📦 v0.1.3 via ⬢ v15.2.0 via 🦀 v1.49.0 
+lupinas-lullaby on  master is 📦 v0.1.3 via ⬢ v15.2.0 via 🦀 v1.49.0
 ❯ lupinas-lullaby --url https://petstore.swagger.io/v2/swagger.json
 export interface ApiResponse {  code  : number;
         message  : string;
