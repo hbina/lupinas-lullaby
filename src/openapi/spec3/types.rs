@@ -1,4 +1,4 @@
-use super::spec::{Ref, Schema};
+use super::spec::{Ref, SchemaObj};
 use serde_yaml::Value;
 use std::fmt::Display;
 
@@ -107,5 +107,5 @@ impl Display for JavaScriptType {
 #[derive(Debug)]
 pub enum Spec3Error {
     InvalidReference(Ref),
-    CannotConvertSchemaToArray(Schema),
+    CannotConvertSchemaToArray(SchemaObj),
 }

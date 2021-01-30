@@ -1,5 +1,5 @@
 use crate::openapi::spec3::{
-    spec::{ObjectOrReference, Ref, Schema},
+    spec::{ObjectOrReference, Ref, SchemaObj},
     Spec3,
 };
 
@@ -14,7 +14,7 @@ fn parse_reference(reference: &Ref) -> String {
     }
 }
 
-fn parse_schema_object_to_javascript_arrays(schema: &Schema) -> JavaScriptType {
+fn parse_schema_object_to_javascript_arrays(schema: &SchemaObj) -> JavaScriptType {
     if let Some(x) = schema.items.as_ref() {
         match x.as_ref() {
             ObjectOrReference::Object(o) => parse_schema_object_to_javascript_type(o),
@@ -28,7 +28,7 @@ fn parse_schema_object_to_javascript_arrays(schema: &Schema) -> JavaScriptType {
     }
 }
 
-fn parse_schema_object_to_javascript_strings(schema: &Schema) -> JavaScriptType {
+fn parse_schema_object_to_javascript_strings(schema: &SchemaObj) -> JavaScriptType {
     if let Some(enums) = schema.enum_values.as_ref() {
         JavaScriptType::Sum(enums.clone())
     } else {
@@ -44,7 +44,7 @@ fn parse_schema_object_to_javascript_strings(schema: &Schema) -> JavaScriptType 
     }
 }
 
-fn parse_schema_object_to_javascript_row_triplets(schema: &Schema) -> Vec<RowTriplet> {
+fn parse_schema_object_to_javascript_row_triplets(schema: &SchemaObj) -> Vec<RowTriplet> {
     // 1. Find the required properties.
     // 2. Iterate through properties.
     // 3. Parse each rows type, creating a triplet of (name, required, type)
@@ -69,7 +69,7 @@ fn parse_schema_object_to_javascript_row_triplets(schema: &Schema) -> Vec<RowTri
 }
 
 // TODO(hbina): Reimplement this to return an intermediate object so we can log the transformation.
-fn parse_schema_object_to_javascript_type(schema: &Schema) -> JavaScriptType {
+fn parse_schema_object_to_javascript_type(schema: &SchemaObj) -> JavaScriptType {
     // 1. Determine the schema type
     // 2. Call the corresponding functions
     if let Some(ttype) = schema.schema_type.as_ref() {
@@ -103,7 +103,7 @@ fn parse_schema_object_to_javascript_type(schema: &Schema) -> JavaScriptType {
 }
 
 fn parse_root_schema_object_to_javascript_construct(
-    (name, schema): (&String, &ObjectOrReference<Schema>),
+    (name, schema): (&String, &ObjectOrReference<SchemaObj>),
 ) -> JavaScriptConstruct {
     let name = name.to_string();
     match schema {

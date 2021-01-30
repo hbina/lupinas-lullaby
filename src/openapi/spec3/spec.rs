@@ -27,41 +27,47 @@ pub enum BooleanObjectOrReference<T> {
 pub struct Spec3 {
     // TODO(hbina): Deserialize as [semantic version number](https://semver.org/spec/v2.0.0.html)
     pub openapi: String,
-    pub info: Info,
-    pub paths: BTreeMap<String, Path>,
+    pub info: InfoObj,
+    pub servers: Vec<Server>,
+    pub paths: BTreeMap<String, PathObj>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub components: Option<Components>,
+    pub components: Option<ComponentObj>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct Path {
+pub struct Server {
+    pub url: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct PathObj {
     #[serde(rename = "$ref", skip_serializing_if = "Option::is_none")]
     pub ref_path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub get: Option<Operation>,
+    pub get: Option<OperationObj>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub put: Option<Operation>,
+    pub put: Option<OperationObj>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub post: Option<Operation>,
+    pub post: Option<OperationObj>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub delete: Option<Operation>,
+    pub delete: Option<OperationObj>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub options: Option<Operation>,
+    pub options: Option<OperationObj>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub head: Option<Operation>,
+    pub head: Option<OperationObj>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub patch: Option<Operation>,
+    pub patch: Option<OperationObj>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub trace: Option<Operation>,
+    pub trace: Option<OperationObj>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct Operation {
-    #[serde(skip_serializing_if = "Option::is_none")]
+pub struct OperationObj {
+    #[serde(rename = "operationId", skip_serializing_if = "Option::is_none")]
     pub operation_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub parameters: Option<Vec<ObjectOrReference<Parameter>>>,
-    pub responses: BTreeMap<String, ObjectOrReference<Response>>,
+    pub parameters: Option<Vec<ObjectOrReference<ParameterObj>>>,
+    pub responses: BTreeMap<String, ObjectOrReference<ResponseObj>>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
@@ -77,7 +83,7 @@ pub enum ParameterLocation {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct Parameter {
+pub struct ParameterObj {
     pub name: String,
     #[serde(rename = "in")]
     pub location: ParameterLocation,
@@ -88,21 +94,22 @@ pub struct Parameter {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct Response {
+pub struct ResponseObj {
+    pub description: String,
     #[serde(skip_serializing_if = " Option::is_none")]
-    pub headers: Option<BTreeMap<String, ObjectOrReference<Header>>>,
+    pub headers: Option<BTreeMap<String, ObjectOrReference<HeaderObj>>>,
     #[serde(skip_serializing_if = " Option::is_none")]
-    pub content: Option<BTreeMap<String, MediaType>>,
+    pub content: Option<BTreeMap<String, MediaTypeObj>>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct MediaType {
+pub struct MediaTypeObj {
     #[serde(skip_serializing_if = " Option::is_none")]
-    pub schema: Option<ObjectOrReference<Schema>>,
+    pub schema: Option<ObjectOrReference<SchemaObj>>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct Header {
+pub struct HeaderObj {
     #[serde(skip_serializing_if = " Option::is_none")]
     pub required: Option<bool>,
     #[serde(skip_serializing_if = " Option::is_none")]
@@ -110,45 +117,45 @@ pub struct Header {
     #[serde(skip_serializing_if = " Option::is_none")]
     pub allow_empty_value: Option<bool>,
     #[serde(skip_serializing_if = " Option::is_none")]
-    pub schema: Option<ObjectOrReference<Schema>>,
+    pub schema: Option<ObjectOrReference<SchemaObj>>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct Info {
+pub struct InfoObj {
     pub title: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     #[serde(rename = "termsOfService", skip_serializing_if = "Option::is_none")]
     pub terms_of_service: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub contact: Option<Contact>,
+    pub contact: Option<ContactObj>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub license: Option<License>,
+    pub license: Option<LicenseObj>,
     pub version: String,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct License {
+pub struct LicenseObj {
     pub name: String,
     pub url: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct Contact {
+pub struct ContactObj {
     pub name: Option<String>,
     pub url: Option<String>,
     pub email: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct Components {
+pub struct ComponentObj {
     /// An object to hold reusable Schema Objects.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub schemas: Option<BTreeMap<String, ObjectOrReference<Schema>>>,
+    pub schemas: Option<BTreeMap<String, ObjectOrReference<SchemaObj>>>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct Schema {
+pub struct SchemaObj {
     /// Properties.
     /// The following properties are taken directly from the [JSON Schema](https://tools.ietf.org/html/draft-wright-json-schema-00) definition and follow the same specification.
     /// TODO(hbina): Extend support to all of this.
@@ -169,22 +176,22 @@ pub struct Schema {
     // JSON Schema.
     // [oneOf-anyOf-](https://swagger.io/docs/specification/data-models/oneof-anyof-allof-not/#oneof)
     #[serde(rename = "oneOf", skip_serializing_if = "Option::is_none")]
-    pub one_of: Option<Vec<ObjectOrReference<Schema>>>,
+    pub one_of: Option<Vec<ObjectOrReference<SchemaObj>>>,
     #[serde(rename = "allOf", skip_serializing_if = "Option::is_none")]
-    pub all_of: Option<Vec<ObjectOrReference<Schema>>>,
+    pub all_of: Option<Vec<ObjectOrReference<SchemaObj>>>,
     #[serde(rename = "anyOf", skip_serializing_if = "Option::is_none")]
-    pub any_of: Option<Vec<ObjectOrReference<Schema>>>,
+    pub any_of: Option<Vec<ObjectOrReference<SchemaObj>>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub not: Option<Vec<ObjectOrReference<Schema>>>,
+    pub not: Option<Vec<ObjectOrReference<SchemaObj>>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub items: Option<Box<ObjectOrReference<Schema>>>,
+    pub items: Option<Box<ObjectOrReference<SchemaObj>>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub properties: Option<BTreeMap<String, ObjectOrReference<Schema>>>,
+    pub properties: Option<BTreeMap<String, ObjectOrReference<SchemaObj>>>,
     #[serde(
         skip_serializing_if = "Option::is_none",
         rename = "additionalProperties"
     )]
-    pub additional_properties: Option<BooleanObjectOrReference<Box<Schema>>>,
+    pub additional_properties: Option<BooleanObjectOrReference<Box<SchemaObj>>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
