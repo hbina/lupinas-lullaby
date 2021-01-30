@@ -91,6 +91,8 @@ pub struct ParameterObj {
     pub required: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub deprecated: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub schema: Option<ObjectOrReference<SchemaObj>>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
