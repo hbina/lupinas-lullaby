@@ -13,13 +13,10 @@ use super::{
 use crate::openapi::{from_path, use_spec};
 use parse_type::{
     parse_header_object_to_row_triplet, parse_media_type_object_to_javascript_type,
-    parse_option_schema_object_to_javascript_type, parse_response_object_to_javascript_type,
+    parse_option_schema_object_to_javascript_type, parse_response_objectref_to_javascript_type,
     parse_schema_object_to_javascript_arrays, parse_schema_object_to_javascript_row_triplets,
 };
-use std::{
-    any::type_name,
-    collections::{BTreeMap, HashMap},
-};
+use std::collections::{BTreeMap, HashMap};
 
 fn unwrap_object_reference_f<Fin, T, O>(f: Fin) -> impl FnMut(&ObjectOrReference<T>) -> O
 where
@@ -33,91 +30,66 @@ where
     }
 }
 
-fn parse_operation(operation: &OperationObj) -> String {
-    let name = operation.operation_id.as_ref().expect("Please consider giving this operation a name. We have not figured out a way to nicely produce a name for an operation.");
-    let queries_param = operation
+#[derive(Debug)]
+pub struct Argument {
+    queries: Vec<RowTriplet>,
+}
+
+fn parse_operation_arguments(operation: &OperationObj) -> Argument {
+    let queries = operation
         .parameters
         .as_ref()
         .unwrap_or(&vec![])
         .iter()
-        .filter_map(unwrap_object_reference_f(|p: &ParameterObj| {
-            match p.location {
-                ParameterLocation::Query => Some((
-                    p.name.clone(),
-                    p.required.unwrap_or(false),
-                    p.schema
-                        .as_ref()
-                        .map(unwrap_object_reference_f(|f| {
-                            parse_type::parse_schema_object_to_javascript_type(f)
-                        }))
-                        .unwrap_or(JavaScriptType::typename("any")),
-                )),
-                _ => None,
-            }
-        }))
-        .collect::<Vec<_>>();
-    let responses = operation
-        .responses
-        .iter()
-        .map(|(status_code, obj)| {
-            (
-                status_code.clone(),
-                parse_response_object_to_javascript_type(obj),
-            )
+        .filter_map(|parameter| match parameter {
+            ObjectOrReference::Object(o) => Some(o),
+            _ => None,
+        })
+        .filter_map(|parameter| match parameter.location {
+            ParameterLocation::Query => Some(RowTriplet::from_triplet(
+                parameter.name.clone(),
+                parameter.required.unwrap_or(false),
+                parameter
+                    .schema
+                    .as_ref()
+                    .map(unwrap_object_reference_f(|f| {
+                        parse_type::parse_schema_object_to_javascript_type(f)
+                    }))
+                    .unwrap_or(JavaScriptType::typename("any")),
+            )),
+            _ => None,
         })
         .collect::<Vec<_>>();
-    println!("responses:{:#?}", responses);
-    let result = format!(
-        r##"
-    export async function
-    {}
-    (
-        queries:{{
-            {}
-        }}
-    ) : Promise<
-    {}
-    > // Figure out the sum type here
-    {{
-        try {{
-            const result = await instance.get("/", {{
-                params : queries
-            }});
-            switch (result.status) {{
-                case 200: {{
-                  return {{
-                    status: 200,
-                    body: result.data,
-                  }};
-                }}
-              }}
-        }} catch (e) {{
-            throw e;
-        }}
-    }} "##,
-        name,
-        queries_param
-            .iter()
-            .map(|x| format!("{} {} : {}", x.0, if x.1 { "" } else { "?" }, x.2))
-            .collect::<Vec<_>>()
-            .join(","),
-        responses
-            .iter()
-            .map(|(status_code, ttype)| {
-                format!(
-                    r##"
-                {{
-                    status: {},
-                    data : {}
-                }}
-                "##,
-                    status_code, ttype
-                )
-            })
-            .collect::<Vec<String>>()
-            .join("|")
-    );
-    println!("result\n:{}", result);
+    Argument { queries }
+}
+
+#[derive(Debug)]
+pub struct Response {
+    status_code: String,
+    ttype: JavaScriptType,
+}
+
+fn parse_operation_responses(operation: &OperationObj) -> Vec<Response> {
+    operation
+        .responses
+        .iter()
+        .map(|(status_code, obj)| Response {
+            status_code: status_code.clone(),
+            ttype: parse_response_objectref_to_javascript_type(obj),
+        })
+        .collect::<Vec<_>>()
+}
+
+pub struct Config { 
+link :Vec<
+}
+
+fn parse_operation(operation: &OperationObj) -> String {
+    let name = operation.operation_id.as_ref().expect("Please consider giving this operation a name. We have not figured out a way to nicely produce a name for an operation.");
+    let queries = parse_operation_arguments(operation);
+    let responses = parse_operation_responses(operation);
+    println!("queries:\n{:#?}", queries);
+    println!("responses:\n{:#?}", responses);
     unimplemented!()
 }
 

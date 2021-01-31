@@ -157,7 +157,7 @@ pub fn parse_option_schema_object_to_javascript_type(
     }
 }
 
-pub fn parse_response_object_to_javascript_type(
+pub fn parse_response_objectref_to_javascript_type(
     obj: &ObjectOrReference<ResponseObj>,
 ) -> JavaScriptType {
     match obj {
