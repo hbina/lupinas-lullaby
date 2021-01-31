@@ -1,16 +1,25 @@
-use parse_type::parse_schema_object_to_javascript_row_triplets;
-
 use super::{
-    parse_type,
+    parse_type::{
+        self, parse_option_schema_objectref_to_javascript_type, parse_reference,
+        parse_schema_object_to_javascript_type,
+    },
     spec::{
         HeaderObj, MediaTypeObj, ObjectOrReference, OperationObj, ParameterLocation, ParameterObj,
         PathObj, ResponseObj, SchemaObj,
     },
-    types::JavaScriptType,
+    types::{JavaScriptType, RowTriplet},
     Spec3,
 };
 use crate::openapi::{from_path, use_spec};
-use std::collections::{BTreeMap, HashMap};
+use parse_type::{
+    parse_header_object_to_row_triplet, parse_media_type_object_to_javascript_type,
+    parse_option_schema_object_to_javascript_type, parse_response_object_to_javascript_type,
+    parse_schema_object_to_javascript_arrays, parse_schema_object_to_javascript_row_triplets,
+};
+use std::{
+    any::type_name,
+    collections::{BTreeMap, HashMap},
+};
 
 fn unwrap_object_reference_f<Fin, T, O>(f: Fin) -> impl FnMut(&ObjectOrReference<T>) -> O
 where
@@ -47,7 +56,17 @@ fn parse_operation(operation: &OperationObj) -> String {
             }
         }))
         .collect::<Vec<_>>();
-
+    let responses = operation
+        .responses
+        .iter()
+        .map(|(status_code, obj)| {
+            (
+                status_code.clone(),
+                parse_response_object_to_javascript_type(obj),
+            )
+        })
+        .collect::<Vec<_>>();
+    println!("responses:{:#?}", responses);
     let result = format!(
         r##"
     export async function
@@ -56,7 +75,9 @@ fn parse_operation(operation: &OperationObj) -> String {
         queries:{{
             {}
         }}
-    ) : Promise<any> // Figure out the sum type here
+    ) : Promise<
+    {}
+    > // Figure out the sum type here
     {{
         try {{
             const result = await instance.get("/", {{
@@ -80,6 +101,21 @@ fn parse_operation(operation: &OperationObj) -> String {
             .map(|x| format!("{} {} : {}", x.0, if x.1 { "" } else { "?" }, x.2))
             .collect::<Vec<_>>()
             .join(","),
+        responses
+            .iter()
+            .map(|(status_code, ttype)| {
+                format!(
+                    r##"
+                {{
+                    status: {},
+                    data : {}
+                }}
+                "##,
+                    status_code, ttype
+                )
+            })
+            .collect::<Vec<String>>()
+            .join("|")
     );
     println!("result\n:{}", result);
     unimplemented!()

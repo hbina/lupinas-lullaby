@@ -39,9 +39,12 @@ pub struct RowTriplet {
 }
 
 impl RowTriplet {
-    pub fn from_triplet(name: String, required: bool, ttype: JavaScriptType) -> RowTriplet {
+    pub fn from_triplet<T>(name: T, required: bool, ttype: JavaScriptType) -> RowTriplet
+    where
+        T: Into<String>,
+    {
         RowTriplet {
-            name,
+            name: name.into(),
             required,
             ttype,
         }
@@ -52,7 +55,7 @@ impl Display for RowTriplet {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} {} : {}",
+            "\"{}\" {} : {}",
             self.name,
             if self.required { "" } else { "?" },
             self.ttype
