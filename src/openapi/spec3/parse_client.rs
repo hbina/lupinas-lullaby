@@ -16,7 +16,10 @@ use parse_type::{
     parse_option_schema_object_to_javascript_type, parse_response_objectref_to_javascript_type,
     parse_schema_object_to_javascript_arrays, parse_schema_object_to_javascript_row_triplets,
 };
+use serde_json::{value, Value};
 use std::collections::{BTreeMap, HashMap};
+
+const REFERENCE_UNSUPPORTED_ERROR_STRING:&'static str = "The ability to resolve paths based on the name is still not implemented. If you have a sample Swagger 3.0 file that uses this feature then raise an issue!";
 
 fn unwrap_object_reference_f<Fin, T, O>(f: Fin) -> impl FnMut(&ObjectOrReference<T>) -> O
 where
@@ -32,11 +35,26 @@ where
 
 #[derive(Debug)]
 pub struct Argument {
-    queries: Vec<RowTriplet>,
+    pub queries: Vec<RowTriplet>,
+    pub paths: Vec<RowTriplet>,
+    pub headers: Vec<RowTriplet>,
+    pub cookies: Vec<RowTriplet>,
+}
+
+impl Argument {
+    pub fn new() -> Argument {
+        Argument {
+            queries: vec![],
+            paths: vec![],
+            headers: vec![],
+            cookies: vec![],
+        }
+    }
 }
 
 fn parse_operation_arguments(operation: &OperationObj) -> Argument {
-    let queries = operation
+    let mut argument = Argument::new();
+    for parameter in operation
         .parameters
         .as_ref()
         .unwrap_or(&vec![])
@@ -45,22 +63,26 @@ fn parse_operation_arguments(operation: &OperationObj) -> Argument {
             ObjectOrReference::Object(o) => Some(o),
             _ => None,
         })
-        .filter_map(|parameter| match parameter.location {
-            ParameterLocation::Query => Some(RowTriplet::from_triplet(
-                parameter.name.clone(),
-                parameter.required.unwrap_or(false),
-                parameter
-                    .schema
-                    .as_ref()
-                    .map(unwrap_object_reference_f(|f| {
-                        parse_type::parse_schema_object_to_javascript_type(f)
-                    }))
-                    .unwrap_or(JavaScriptType::typename("any")),
-            )),
-            _ => None,
-        })
-        .collect::<Vec<_>>();
-    Argument { queries }
+    {
+        let triplet = RowTriplet::from_triplet(
+            parameter.name.clone(),
+            parameter.required.unwrap_or(false),
+            parameter
+                .schema
+                .as_ref()
+                .map(unwrap_object_reference_f(|f| {
+                    parse_type::parse_schema_object_to_javascript_type(f)
+                }))
+                .unwrap_or(JavaScriptType::typename("any")),
+        );
+        match parameter.location {
+            ParameterLocation::Query => argument.queries.push(triplet),
+            ParameterLocation::Header => argument.paths.push(triplet),
+            ParameterLocation::Path => argument.headers.push(triplet),
+            ParameterLocation::Cookie => argument.cookies.push(triplet),
+        }
+    }
+    argument
 }
 
 #[derive(Debug)]
@@ -80,40 +102,143 @@ fn parse_operation_responses(operation: &OperationObj) -> Vec<Response> {
         .collect::<Vec<_>>()
 }
 
-pub struct Config { 
-link :Vec<
+#[derive(Debug)]
+pub enum Item {
+    String(String),
+    Reference(String),
 }
 
-fn parse_operation(operation: &OperationObj) -> String {
-    let name = operation.operation_id.as_ref().expect("Please consider giving this operation a name. We have not figured out a way to nicely produce a name for an operation.");
-    let queries = parse_operation_arguments(operation);
-    let responses = parse_operation_responses(operation);
-    println!("queries:\n{:#?}", queries);
-    println!("responses:\n{:#?}", responses);
-    unimplemented!()
+fn replace_path_with_argument(argument: &Argument, string: &String) -> String {
+    if let Some(r) = argument
+        .queries
+        .iter()
+        .map(|x| &x.name)
+        .find(|x| x == &string)
+    {
+        format!("queries.{}", r)
+    } else if let Some(r) = argument
+        .paths
+        .iter()
+        .map(|x| &x.name)
+        .find(|x| x == &string)
+    {
+        format!("paths.{}", r)
+    } else if let Some(r) = argument
+        .headers
+        .iter()
+        .map(|x| &x.name)
+        .find(|x| x == &string)
+    {
+        format!("headers.{}", r)
+    } else if let Some(r) = argument
+        .cookies
+        .iter()
+        .map(|x| &x.name)
+        .find(|x| x == &string)
+    {
+        format!("cookies.{}", r)
+    } else {
+        panic!(format!(
+            "Cannot find that parameter name '{}' anywhere",
+            string
+        ))
+    }
+}
+
+fn parse_operation_link(path: &String, argument: &Argument, operation: &OperationObj) -> String {
+    let items = path
+        .split('/')
+        .map(|x| {
+            if x.starts_with("{") && x.ends_with("}") {
+                Item::Reference(String::from(&x[1..x.len() - 1]))
+            } else {
+                Item::String(String::from(x))
+            }
+        })
+        .map(|i| match i {
+            Item::String(s) => s,
+            Item::Reference(r) => format!("${{{}}}", replace_path_with_argument(argument, &r)),
+        })
+        .collect::<Vec<String>>()
+        .join("/");
+    items
+}
+
+#[derive(Debug)]
+pub struct Config {
+    headers: BTreeMap<String, String>,
+    params: BTreeMap<String, Value>,
+    data: Value,
+}
+
+impl Config {
+    pub fn new() -> Config {
+        Config {
+            headers: BTreeMap::new(),
+            params: BTreeMap::new(),
+            data: Value::Null,
+        }
+    }
+}
+
+fn parse_operation_config(argument: &Argument) -> Config {
+    let mut config = Config::new();
+    for header in argument.headers.iter() {
+        if let Some(name) = config
+            .headers
+            .insert(header.name.clone(), format!("headers.{}", header.name))
+        {
+            panic!(format!("Header with duplicate name `{}`", name))
+        }
+    }
+    config
 }
 
 pub fn generate_clients(spec: &Spec3) -> String {
-    spec.paths
+    let clients = spec
+        .paths
         .iter()
         .map(|(path, path_obj)| {
-            if let Some(reference) = path_obj.ref_path.as_ref() {
-        unimplemented!("The ability to resolve paths based on the name is still not implemented. If you have a sample Swagger 3.0 file that uses this feature then raise an issue!");
+            if let Some(_) = path_obj.ref_path.as_ref() {
+                unimplemented!("{}", REFERENCE_UNSUPPORTED_ERROR_STRING);
             } else {
-                let get = path_obj.get.as_ref().map(parse_operation);
+                let get = path_obj
+                    .get
+                    .as_ref()
+                    .map(|operation| {
+                        let name = operation.operation_id.as_ref().unwrap();
+                        let arguments = parse_operation_arguments(operation);
+                        let responses = parse_operation_responses(operation);
+                        let link = parse_operation_link(path, &arguments, operation);
+                        let config = parse_operation_config(&arguments);
+                        println!("------------------");
+                        println!("name:{:#?}", name);
+                        println!("arguments:\n{:#?}", arguments);
+                        println!("responses:\n{:#?}", responses);
+                        println!("link:\n{:#?}", link);
+                        println!("config:\n{:#?}", config);
+                        format!("")
+                    })
+                    .unwrap_or(String::new());
+                get
             }
         })
-        .for_each(|x|{});
-    spec.servers.iter().enumerate().for_each(|(idx, s)| {
-        println!(
-            r##"
+        .collect::<String>();
+    let instances = spec
+        .servers
+        .iter()
+        .enumerate()
+        .map(|(idx, s)| {
+            format!(
+                r##"
 const server{} = axios.create({{
     baseURL: "{}",
 }});"##,
-            idx, s.url
-        )
-    });
-    format!(r##"types"##,)
+                idx, s.url
+            )
+        })
+        .collect::<String>();
+    format!("{}{}", instances, clients)
 }
 
 #[test]

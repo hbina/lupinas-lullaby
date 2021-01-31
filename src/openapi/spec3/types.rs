@@ -33,9 +33,9 @@ impl Display for JavaScriptConstruct {
 
 #[derive(Debug)]
 pub struct RowTriplet {
-    name: String,
-    required: bool,
-    ttype: JavaScriptType,
+    pub name: String,
+    pub required: bool,
+    pub ttype: JavaScriptType,
 }
 
 impl RowTriplet {
