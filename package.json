@@ -2,7 +2,7 @@
   "name": "lupinas-lullaby",
   "version": "0.1.8",
   "description": "Parse Swagger 2.0 into a Typescript interface file.",
-  "type": "commonjs",
+  "type": "module",
   "main": "index.js",
   "files": [
     "npm/**/*"

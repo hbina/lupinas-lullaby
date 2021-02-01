@@ -54,6 +54,7 @@ impl Argument {
 
 fn parse_operation_arguments(operation: &OperationObj) -> Argument {
     let mut argument = Argument::new();
+    println!("operation:{:#?}", operation);
     for parameter in operation
         .parameters
         .as_ref()
@@ -77,8 +78,8 @@ fn parse_operation_arguments(operation: &OperationObj) -> Argument {
         );
         match parameter.location {
             ParameterLocation::Query => argument.queries.push(triplet),
-            ParameterLocation::Header => argument.paths.push(triplet),
-            ParameterLocation::Path => argument.headers.push(triplet),
+            ParameterLocation::Header => argument.headers.push(triplet),
+            ParameterLocation::Path => argument.paths.push(triplet),
             ParameterLocation::Cookie => argument.cookies.push(triplet),
         }
     }
@@ -99,16 +100,12 @@ fn parse_operation_responses(operation: &OperationObj) -> Vec<Response> {
             status_code: status_code.clone(),
             ttype: parse_response_objectref_to_javascript_type(obj),
         })
+        .filter(|s| s.status_code != "default")
         .collect::<Vec<_>>()
 }
 
-#[derive(Debug)]
-pub enum Item {
-    String(String),
-    Reference(String),
-}
-
 fn replace_path_with_argument(argument: &Argument, string: &String) -> String {
+    println!("argument:\n{:#?}\nstring:\n{:#?}", argument, string);
     if let Some(r) = argument
         .queries
         .iter()
@@ -145,7 +142,12 @@ fn replace_path_with_argument(argument: &Argument, string: &String) -> String {
     }
 }
 
-fn parse_operation_link(path: &String, argument: &Argument, operation: &OperationObj) -> String {
+fn parse_operation_link(path: &String, argument: &Argument) -> String {
+    #[derive(Debug)]
+    pub enum Item {
+        String(String),
+        Reference(String),
+    }
     let items = path
         .split('/')
         .map(|x| {
@@ -164,66 +166,100 @@ fn parse_operation_link(path: &String, argument: &Argument, operation: &Operatio
     items
 }
 
-#[derive(Debug)]
-pub struct Config {
-    headers: BTreeMap<String, String>,
-    params: BTreeMap<String, Value>,
-    data: Value,
-}
-
-impl Config {
-    pub fn new() -> Config {
-        Config {
-            headers: BTreeMap::new(),
-            params: BTreeMap::new(),
-            data: Value::Null,
-        }
-    }
-}
-
-fn parse_operation_config(argument: &Argument) -> Config {
-    let mut config = Config::new();
-    for header in argument.headers.iter() {
-        if let Some(name) = config
-            .headers
-            .insert(header.name.clone(), format!("headers.{}", header.name))
-        {
-            panic!(format!("Header with duplicate name `{}`", name))
-        }
-    }
-    config
+pub fn create_client_function(
+    instance_name: &String,
+    name: &String,
+    arguments: &Argument,
+    responses: &Vec<Response>,
+    path_link: &String,
+) -> String {
+    let config_queries_signature = format!(
+        r##"{{{}}}"##,
+        arguments
+            .queries
+            .iter()
+            .map(|s| { s.to_string() })
+            .collect::<Vec<String>>()
+            .join(",")
+    );
+    let config_paths_signature = format!(
+        r##"{{{}}}"##,
+        arguments
+            .paths
+            .iter()
+            .map(|s| { s.to_string() })
+            .collect::<Vec<String>>()
+            .join(",")
+    );
+    let config_head_signature = format!("{{}}");
+    let config_cookies_signature = format!("{{}}");
+    let return_sum_types = format!(
+        r##"{}"##,
+        responses
+            .iter()
+            .map(|s| {
+                format!(
+                    r##"
+{{
+    status : {},
+    body : {}
+}}"##,
+                    s.status_code, s.ttype
+                )
+            })
+            .collect::<Vec<String>>()
+            .join("|")
+    );
+    let switch_body = format!(
+        r##"{}"##,
+        responses
+            .iter()
+            .map(|s| {
+                format!(
+                    r##"
+                case {}: {{
+                    return {{
+                      status: {},
+                      body: result.data,
+                    }};
+                  }}
+            "##,
+                    s.status_code, s.status_code
+                )
+            })
+            .collect::<Vec<String>>()
+            .join("\n")
+    );
+    format!(
+        r##"export async function {}(
+    params: {},
+    paths: {},
+    headers: {},
+    cookies: {}
+): Promise<{}> {{
+    const result = await {}.get(`{}`,
+    {{
+        params,
+        headers,
+    }});
+    switch (result.status) {{
+{}
+    }}
+    throw new Error();
+}}"##,
+        name,
+        config_queries_signature,
+        config_paths_signature,
+        config_head_signature,
+        config_cookies_signature,
+        return_sum_types,
+        instance_name,
+        path_link,
+        switch_body
+    )
 }
 
 pub fn generate_clients(spec: &Spec3) -> String {
-    let clients = spec
-        .paths
-        .iter()
-        .map(|(path, path_obj)| {
-            if let Some(_) = path_obj.ref_path.as_ref() {
-                unimplemented!("{}", REFERENCE_UNSUPPORTED_ERROR_STRING);
-            } else {
-                let get = path_obj
-                    .get
-                    .as_ref()
-                    .map(|operation| {
-                        let name = operation.operation_id.as_ref().unwrap();
-                        let arguments = parse_operation_arguments(operation);
-                        let responses = parse_operation_responses(operation);
-                        let link = parse_operation_link(path, &arguments, operation);
-                        let config = parse_operation_config(&arguments);
-                        println!("------------------");
-                        println!("name:{:#?}", name);
-                        println!("arguments:\n{:#?}", arguments);
-                        println!("responses:\n{:#?}", responses);
-                        println!("link:\n{:#?}", link);
-                        println!("config:\n{:#?}", config);
-                        format!("")
-                    })
-                    .unwrap_or(String::new());
-                get
-            }
-        })
-        .collect::<String>();
     let instances = spec
         .servers
         .iter()
@@ -232,12 +268,46 @@ pub fn generate_clients(spec: &Spec3) -> String {
             format!(
                 r##"
 const server{} = axios.create({{
-    baseURL: "{}",
+baseURL: "{}",
 }});"##,
                 idx, s.url
             )
         })
-        .collect::<String>();
+        .collect::<Vec<String>>()
+        .join("\n");
+    let clients = (0..spec.servers.iter().enumerate().len())
+        .map(|idx| {
+            let instance_name = format!("server{}", idx);
+            spec.paths
+                .iter()
+                .map(|(path, path_obj)| {
+                    if let Some(_) = path_obj.ref_path.as_ref() {
+                        unimplemented!("{}", REFERENCE_UNSUPPORTED_ERROR_STRING);
+                    } else {
+                        let get = path_obj
+                            .get
+                            .as_ref()
+                            .map(|operation| {
+                                let name = operation.operation_id.as_ref().unwrap();
+                                let arguments = parse_operation_arguments(operation);
+                                let responses = parse_operation_responses(operation);
+                                let link = parse_operation_link(path, &arguments);
+                                create_client_function(
+                                    &instance_name,
+                                    name,
+                                    &arguments,
+                                    &responses,
+                                    &link,
+                                )
+                            })
+                            .unwrap_or(String::new());
+                        get
+                    }
+                })
+                .collect::<String>()
+        })
+        .collect::<Vec<String>>()
+        .join("\n");
     format!("{}{}", instances, clients)
 }
 

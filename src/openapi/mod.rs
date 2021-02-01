@@ -36,7 +36,14 @@ pub fn from_bytes(read: &[u8]) -> OpenApi {
 pub fn use_spec(spec: &OpenApi) -> String {
     match spec {
         OpenApi::V2(spec) => use_spec2(&spec),
-        OpenApi::V3(spec) => format!("{}{}", generate_types(spec), generate_clients(spec)),
+        OpenApi::V3(spec) => format!(
+            r##"
+        import axios from "axios";
+        {}
+        {}"##,
+            generate_types(spec),
+            generate_clients(spec)
+        ),
     }
 }
 
