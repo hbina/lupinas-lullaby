@@ -35,22 +35,24 @@ pub fn convert_schema_type_to_javascript_type(schema: &Schema) -> JavaScriptType
         )
     } else if let Some(ttype) = schema.schema_type.as_ref() {
         match ttype.as_str() {
-            "integer" | "number" => JavaScriptType::typename("Number"),
+            "integer" | "number" => JavaScriptType::typename("number"),
             "string" => {
                 if let Some(enums) = schema.enum_values.as_ref() {
                     JavaScriptType::Sum(enums.clone())
                 } else if let Some(format) = schema.format.as_ref() {
                     match format.as_str() {
                         "date-time" => JavaScriptType::typename("Date"),
-                        _ => JavaScriptType::typename("String"),
+                        _ => JavaScriptType::typename("string"),
                     }
                 } else {
-                    JavaScriptType::typename("String")
+                    JavaScriptType::typename("string")
                 }
             }
-            "boolean" => JavaScriptType::typename("Boolean"),
+            "boolean" => JavaScriptType::typename("boolean"),
             "array" => match schema.items.as_ref() {
-                Some(child_schema) => convert_schema_type_to_javascript_type(child_schema),
+                Some(child_schema) => JavaScriptType::Array(Box::new(
+                    convert_schema_type_to_javascript_type(child_schema),
+                )),
                 None => JavaScriptType::typename("any"),
             },
             "object" => convert_schema_to_anonymous_object(schema),
@@ -94,6 +96,7 @@ pub fn use_spec2(spec: &Spec2) -> String {
 
 #[derive(Debug, Clone)]
 pub enum JavaScriptType {
+    Array(Box<JavaScriptType>),
     Product(Vec<JavaScriptType>),
     Sum(Vec<String>),
     Typename(String),
@@ -112,6 +115,9 @@ impl Display for JavaScriptType {
             f,
             "{}",
             match self {
+                JavaScriptType::Array(o) => {
+                    format!("{}[]", o)
+                }
                 JavaScriptType::AnonymousObject(o) => {
                     format!(
                         "{{{}}}",
@@ -153,7 +159,7 @@ impl Display for RowTriplet {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} {} : {}",
+            "\"{}\" {} : {}",
             self.name,
             if self.required { "" } else { "?" },
             self.ttype

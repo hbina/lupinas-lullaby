@@ -1,6 +1,6 @@
 use super::spec::{ObjectOrReference, Ref, Schema, Spec3};
 use serde_yaml::Value;
-use std::fmt::Display;
+use std::{fmt::Display, unimplemented};
 
 pub fn parse_reference(reference: &Ref) -> String {
     let (prefix, name) = reference.ref_path.split_at("#/components/schemas/".len());
@@ -33,10 +33,10 @@ fn parse_schema_object_to_javascript_strings(schema: &Schema) -> JavaScriptType 
         if let Some(format) = schema.format.as_ref() {
             match format.as_str() {
                 "date" | "date-time" => JavaScriptType::typename("Date"),
-                _ => JavaScriptType::typename("String"),
+                _ => JavaScriptType::typename("string"),
             }
         } else {
-            JavaScriptType::typename("String")
+            JavaScriptType::typename("string")
         }
     }
 }
@@ -65,28 +65,38 @@ fn parse_schema_object_to_javascript_row_triplets(schema: &Schema) -> Vec<RowTri
     }
 }
 
+fn parse_schema_object_to_enum_values(schema: &Schema) -> Vec<Value> {
+    if let Some(values) = schema.enum_values.as_ref() {
+        values.clone()
+    } else {
+        vec![]
+    }
+}
+
 // TODO(hbina): Reimplement this to return an intermediate object so we can log the transformation.
 pub fn parse_schema_object_to_javascript_type(schema: &Schema) -> JavaScriptType {
     // 1. Determine the schema type
     // 2. Call the corresponding functions
-    if let Some(ttype) = schema.schema_type.as_ref() {
-        match ttype.as_str() {
+
+    if let Some(ty) = schema.schema_type.as_ref() {
+        match ty.as_str() {
             "array" => {
                 JavaScriptType::Array(Box::new(parse_schema_object_to_javascript_arrays(schema)))
             }
             "string" => parse_schema_object_to_javascript_strings(schema),
-            "object" => {
-                JavaScriptType::AnonymousObject(parse_schema_object_to_javascript_row_triplets(schema))
-            }
+            "object" => JavaScriptType::AnonymousObject(
+                parse_schema_object_to_javascript_row_triplets(schema),
+            ),
             // TODO(hbina): Narrow down the exact type later.
             "integer" | "number" => JavaScriptType::typename("number"),
             "boolean" => JavaScriptType::typename("boolean"),
             "unknown" => JavaScriptType::typename("unknown"),
+            "enum" => JavaScriptType::Sum(parse_schema_object_to_enum_values(schema)),
             // TODO(hbina): It is entirely possile type of a schema object to just be a string.
             // I should think.
             // Actually, this case should not even be possible because `types` can take a limited set of values.
             // Rework `openapi` to make this unrepresentable.
-            _ => panic!(
+            _ => unimplemented!(
                 r##"attempting to parse schema with unknown type. schema:{:#?}"##,
                 schema
             ),
@@ -183,7 +193,7 @@ impl Display for RowTriplet {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{} {} : {}",
+            "\"{}\" {} : {}",
             self.name,
             if self.required { "" } else { "?" },
             self.ttype
