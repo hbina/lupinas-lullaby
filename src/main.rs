@@ -3,7 +3,7 @@ extern crate clap;
 mod openapi;
 
 use reqwest::{blocking::Client, StatusCode};
-use std::{error::Error, fs::OpenOptions};
+use std::{error::Error, fs::OpenOptions, io::Read};
 
 pub fn main() -> Result<(), Box<dyn Error>> {
     let matches = clap::App::new(clap::crate_name!())
@@ -68,7 +68,10 @@ If this value is not specified, it will simply write to stdout.
             panic!("HTTP GET response returned error.\n{:#?}", res)
         }
     } else {
-        panic!("Please provide at least the file or the URL to parse!")
+        println!("Reading input from stdin");
+        let mut buffer = String::new();
+        std::io::Read::read_to_string(&mut std::io::stdin(), &mut buffer)?;
+        buffer
     };
     if let Some(outfile) = matches.value_of("outfile") {
         let mut file = OpenOptions::new()
