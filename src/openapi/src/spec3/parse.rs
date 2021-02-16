@@ -20,7 +20,7 @@ fn parse_schema_object_to_javascript_arrays(schema: &Schema) -> JavaScriptType {
     } else {
         panic!(
             "{:#?}",
-            Spec3Error::CannotConvertSchemaToArray(schema.clone())
+            Spec3Error::CannotConvertSchemaToArray(Box::new(schema.clone()))
         )
     }
 }
@@ -134,7 +134,7 @@ pub fn use_spec3(spec: &Spec3) -> String {
                 .iter()
                 .map(|x| format!("{}", x))
                 .collect::<String>();
-            return result;
+            result
         } else {
             String::new()
         }
@@ -208,12 +208,12 @@ impl Display for JavaScriptType {
                 let result = s
                     .iter()
                     .map(|v| match v {
-                        Value::Null => format!("null"),
+                        Value::Null => "null".to_string(),
                         Value::Bool(b) => {
                             if *b {
-                                format!("true")
+                                "true".to_string()
                             } else {
-                                format!("false")
+                                "false".to_string()
                             }
                         }
                         Value::Number(n) => {
@@ -248,5 +248,5 @@ impl Display for JavaScriptType {
 #[derive(Debug)]
 pub enum Spec3Error {
     InvalidReference(Ref),
-    CannotConvertSchemaToArray(Schema),
+    CannotConvertSchemaToArray(Box<Schema>),
 }

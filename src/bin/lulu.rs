@@ -1,15 +1,12 @@
 extern crate clap;
 
-mod openapi;
-
 use reqwest::{blocking::Client, StatusCode};
-use std::{error::Error, fs::OpenOptions, io::Read};
+use std::{error::Error, fs::OpenOptions};
 
 pub fn main() -> Result<(), Box<dyn Error>> {
     let matches = clap::App::new(clap::crate_name!())
         .version(clap::crate_version!())
         .author(clap::crate_authors!())
-        .about(clap::crate_description!())
         .arg(
             clap::Arg::with_name("file")
                 .long("file")
