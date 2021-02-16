@@ -18,31 +18,24 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get -y install gcc-mingw-w64-x86-64 gcc-mingw-w64-i686
+          sudo apt-get -y install gcc-mingw-w64-x86-64
           rustup +nightly target add x86_64-pc-windows-gnu
-          rustup +nightly target add i686-pc-windows-gnu
           rustup +nightly target add x86_64-unknown-linux-gnu
           rustup +nightly target add x86_64-apple-darwin
           mkdir dist
           mkdir builds
       - name: Build Win64
         run: |
-          cargo +nightly rustc --release --verbose --target=x86_64-pc-windows-gnu -- -C linker=x86_64-w64-mingw32-gcc
-          mkdir builds/lupinas-lullaby-win64
-          cp target/x86_64-pc-windows-gnu/release/lupinas-lullaby.exe builds/lupinas-lullaby-win64
-          tar -C builds -czvf dist/lupinas-lullaby-win64.tar.gz lupinas-lullaby-win64
-      - name: Build Win32
-        run: |
-          cargo +nightly rustc --release --verbose --target=i686-pc-windows-gnu -- -C linker=i686-w64-mingw32-gcc -C link-args=-mwindows -C panic=abort
-          mkdir builds/lupinas-lullaby-win32
-          cp target/i686-pc-windows-gnu/release/lupinas-lullaby.exe builds/lupinas-lullaby-win32
-          tar -C builds -czvf dist/lupinas-lullaby-win32.tar.gz lupinas-lullaby-win32
+          cargo +nightly rustc --bin lulu --release --verbose --target=x86_64-pc-windows-gnu -- -C linker=x86_64-w64-mingw32-gcc
+          mkdir builds/lulu-win64
+          cp target/x86_64-pc-windows-gnu/release/lulu.exe builds/lulu-win64/lulu-win64.exe
+          tar -C builds -czvf dist/lulu-win64.tar.gz lulu-win64
       - name: Build Linux
         run: |
-          cargo +nightly rustc --release --verbose --target=x86_64-unknown-linux-gnu
-          mkdir builds/lupinas-lullaby-linux
-          cp target/x86_64-unknown-linux-gnu/release/lupinas-lullaby builds/lupinas-lullaby-linux
-          tar -C builds -czvf dist/lupinas-lullaby-linux.tar.gz lupinas-lullaby-linux
+          cargo +nightly rustc --bin lulu --release --verbose --target=x86_64-unknown-linux-gnu
+          mkdir builds/lulu-linux
+          cp target/x86_64-unknown-linux-gnu/release/lulu builds/lulu-linux/lulu-linux
+          tar -C builds -czvf dist/lulu-linux.tar.gz lulu-linux
       - name: Cache Mac OS dependencies
         id: cache-macos
         uses: actions/cache@v1
@@ -61,22 +54,21 @@ jobs:
           UNATTENDED=yes OSX_VERSION_MIN=10.7 ./build.sh
       - name: Build Mac OS
         run: |
-          export PATH="$(pwd)/osxcross/target/bin:$PATH"
+          export PATH="$(pwd)/../osxcross/target/bin:$PATH"
           export LIBZ_SYS_STATIC=1
           export CC=o64-clang
           export CXX=o64-clang++
-          cargo +nightly build --release --target x86_64-apple-darwin
-          mkdir builds/lupinas-lullaby-macos
-          cp target/x86_64-apple-darwin/release/lupinas-lullaby builds/lupinas-lullaby-macos
-          tar -C builds -czvf dist/lupinas-lullaby-macos.tar.gz lupinas-lullaby-macos
+          cargo +nightly build --bin lulu --release --target x86_64-apple-darwin
+          mkdir builds/lulu-macos
+          cp target/x86_64-apple-darwin/release/lulu builds/lulu-macos/lulu-macos
+          tar -C builds -czvf dist/lulu-macos.tar.gz lulu-macos
       - name: Upload release
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            dist/lupinas-lullaby-win64.tar.gz
-            dist/lupinas-lullaby-win32.tar.gz
-            dist/lupinas-lullaby-linux.tar.gz
-            dist/lupinas-lullaby-macos.tar.gz
+            dist/lulu-win64.tar.gz
+            dist/lulu-linux.tar.gz
+            dist/lulu-macos.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

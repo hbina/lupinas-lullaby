@@ -130,3 +130,4 @@ Cargo.lock
 .idea/
 *.ts
 *.js
+builds/

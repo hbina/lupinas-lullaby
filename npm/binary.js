@@ -7,46 +7,43 @@ const error = (msg) => {
   process.exit(1);
 };
 
-const { version, name } = require("./../package.json");
+const { version, name } = require("./package.json");
 
 const supportedPlatforms = [
   {
     TYPE: "Windows_NT",
     ARCHITECTURE: "x64",
     RUST_TARGET: "x86_64-pc-windows-msvc",
-    BINARY_NAME: "lupinas-lullaby-win64.exe",
-  },
-  {
-    TYPE: "Windows_NT",
-    ARCHITECTURE: "x32",
-    RUST_TARGET: "x86_64-pc-windows-msvc",
-    BINARY_NAME: "lupinas-lullaby-win32",
+    TAR_NAME: "lulu-win64",
+    BINARY_NAME: "lulu-win64.exe",
   },
   {
     TYPE: "Linux",
     ARCHITECTURE: "x64",
     RUST_TARGET: "x86_64-unknown-linux-musl",
-    BINARY_NAME: "lupinas-lullaby-linux",
+    TAR_NAME: "lulu-linux",
+    BINARY_NAME: "lulu-linux",
   },
   {
     TYPE: "Darwin",
     ARCHITECTURE: "x64",
     RUST_TARGET: "x86_64-apple-darwin",
-    BINARY_NAME: "lupinas-lullaby-macos",
+    TAR_NAME: "lulu-macos",
+    BINARY_NAME: "lulu-macos",
   },
 ];
 
 const getPlatformMetadata = () => {
   const type = os.type();
   const architecture = os.arch();
-
-  for (let index in supportedPlatforms) {
-    let supportedPlatform = supportedPlatforms[index];
-    if (
-      type === supportedPlatform.TYPE &&
-      architecture === supportedPlatform.ARCHITECTURE
-    ) {
-      return supportedPlatform;
+  console.log(
+    `You have type:${JSON.stringify(type)} architecture:${JSON.stringify(
+      architecture
+    )}`
+  );
+  for (const platform of supportedPlatforms) {
+    if (type === platform.TYPE && architecture === platform.ARCHITECTURE) {
+      return platform;
     }
   }
 
@@ -59,8 +56,8 @@ const getPlatformMetadata = () => {
 
 const getBinary = () => {
   const platformMetadata = getPlatformMetadata();
-  const url = `https://github.com/hbina/lupinas-lullaby/releases/download/v${version}/${platformMetadata.BINARY_NAME}.tar.gz`;
-  return new Binary("lupinas-lullaby", url);
+  const url = `https://github.com/hbina/lupinas-lullaby/releases/download/v${version}/${platformMetadata.TAR_NAME}.tar.gz`;
+  return new Binary(platformMetadata.BINARY_NAME, url);
 };
 
 const run = () => {
@@ -68,8 +65,7 @@ const run = () => {
     const binary = getBinary();
     binary.run(process.argv);
   } catch (e) {
-    console.error(`${JSON.stringify(e)}`);
-    process.exit(1);
+    error(`${JSON.stringify(e)}`);
   }
 };
 
