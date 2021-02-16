@@ -1,4 +1,3 @@
-
 # Created by https://www.toptal.com/developers/gitignore/api/rust,node
 # Edit at https://www.toptal.com/developers/gitignore?templates=rust,node
 
@@ -10,9 +9,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
-
-# Diagnostic reports (https://nodejs.org/api/report.html)
-report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 # Runtime data
 pids
@@ -130,3 +126,5 @@ Cargo.lock
 .idea/
 *.ts
 *.js
+builds/
+*.json

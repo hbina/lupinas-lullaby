@@ -1,6 +1,6 @@
 {
   "name": "lupinas-lullaby",
-  "version": "0.1.8",
+  "version": "0.2.0",
   "description": "Parse Swagger 2.0 into a Typescript interface file.",
   "type": "commonjs",
   "main": "index.js",
