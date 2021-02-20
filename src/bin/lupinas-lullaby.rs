@@ -69,7 +69,8 @@ If this value is not specified, it will simply write to stdout.
         println!("Reading input from stdin");
         let mut buffer = String::new();
         std::io::Read::read_to_string(&mut std::io::stdin(), &mut buffer).unwrap();
-        let result = openapi::use_spec(&serde_yaml::from_str(&buffer).unwrap());result
+        let result = openapi::use_spec(&serde_yaml::from_str(&buffer).unwrap());
+        result
     };
     if let Some(outfile) = matches.value_of("outfile") {
         let mut file = OpenOptions::new()
