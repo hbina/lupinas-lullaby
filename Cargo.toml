@@ -1,6 +1,6 @@
 [package]
 name = "lupinas-lullaby"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Hanif Bin Ariffin <hanif.ariffin.4326@gmail.com>"]
 edition = "2018"
 description = "Automatically generate TypeScript interfaces from a Swagger 2.0 spec."
@@ -21,7 +21,7 @@ serde_yaml = "0.8.15"
 lto = true
 
 [[bin]]
-name = "lulu"
+name = "lupinas-lullaby"
 
 [lib]
 name = "openapi"

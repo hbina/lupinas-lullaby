@@ -57,9 +57,10 @@ If this value is not specified, it will simply write to stdout.
         let res = Client::new()
             .get(url)
             .basic_auth(auth_username, auth_password)
-            .send()?;
+            .send()
+            .unwrap();
         if res.status() == StatusCode::OK {
-            let res = res.bytes()?;
+            let res = res.bytes().unwrap();
             openapi::use_spec(&openapi::from_bytes(&res))
         } else {
             panic!("HTTP GET response returned error.\n{:#?}", res)
@@ -67,16 +68,17 @@ If this value is not specified, it will simply write to stdout.
     } else {
         println!("Reading input from stdin");
         let mut buffer = String::new();
-        std::io::Read::read_to_string(&mut std::io::stdin(), &mut buffer)?;
-        buffer
+        std::io::Read::read_to_string(&mut std::io::stdin(), &mut buffer).unwrap();
+        let result = openapi::use_spec(&serde_yaml::from_str(&buffer).unwrap());result
     };
     if let Some(outfile) = matches.value_of("outfile") {
         let mut file = OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
-            .open(outfile)?;
-        std::io::Write::write_all(&mut file, result.as_bytes())?;
+            .open(outfile)
+            .unwrap();
+        std::io::Write::write_all(&mut file, result.as_bytes()).unwrap();
     } else {
         println!("{}", result);
     }

@@ -14,22 +14,22 @@ const supportedPlatforms = [
     TYPE: "Windows_NT",
     ARCHITECTURE: "x64",
     RUST_TARGET: "x86_64-pc-windows-msvc",
-    TAR_NAME: "lulu-win64",
-    BINARY_NAME: "lulu-win64.exe",
+    TAR_NAME: "lupinas-lullaby-win64",
+    BINARY_NAME: "lupinas-lullaby-win64.exe",
   },
   {
     TYPE: "Linux",
     ARCHITECTURE: "x64",
     RUST_TARGET: "x86_64-unknown-linux-musl",
-    TAR_NAME: "lulu-linux",
-    BINARY_NAME: "lulu-linux",
+    TAR_NAME: "lupinas-lullaby-linux",
+    BINARY_NAME: "lupinas-lullaby-linux",
   },
   {
     TYPE: "Darwin",
     ARCHITECTURE: "x64",
     RUST_TARGET: "x86_64-apple-darwin",
-    TAR_NAME: "lulu-macos",
-    BINARY_NAME: "lulu-macos",
+    TAR_NAME: "lupinas-lullaby-macos",
+    BINARY_NAME: "lupinas-lullaby-macos",
   },
 ];
 

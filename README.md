@@ -32,32 +32,10 @@ It doesn't have the best format ... but its a perfectly valid TS file. You will 
 ```
 lupinas-lullaby on  master is 📦 v0.1.3 via ⬢ v15.2.0 via 🦀 v1.49.0
 ❯ lupinas-lullaby --url https://petstore.swagger.io/v2/swagger.json
-export interface ApiResponse {  code  : number;
-        message  : string;
-        type  : string;
-}export interface Category {    id  : number;
-        name  : string;
-}export interface Order {       complete  : boolean;
-        id  : number;
-        petId  : number;
-        quantity  : number;
-        shipDate  : Date;
-        status  : "placed" |"approved" |"delivered" ;
-}export interface Pet { category  : Category;
-        id  : number;
-        name ? : string;
-        photoUrls ? : string;
-        status  : "available" |"pending" |"sold" ;
-        tags  : Tag;
-}export interface Tag { id  : number;
-        name  : string;
-}export interface User {        email  : string;
-        firstName  : string;
-        id  : number;
-        lastName  : string;
-        password  : string;
-        phone  : string;
-        userStatus  : number;
-        username  : string;
-}
+export type ApiResponse = {"code" ? : number;"message" ? : string;"type" ? : string;}
+export type Category = {"id" ? : number;"name" ? : string;}
+export type Order = {"complete" ? : boolean;"id" ? : number;"petId" ? : number;"quantity" ? : number;"shipDate" ? : Date;"status" ? : "placed" |"approved" |"delivered" ;}
+export type Pet = {"category" ? : Category;"id" ? : number;"name"  : string;"photoUrls"  : string[];"status" ? : "available" |"pending" |"sold" ;"tags" ? : Tag[];}
+export type Tag = {"id" ? : number;"name" ? : string;}
+export type User = {"email" ? : string;"firstName" ? : string;"id" ? : number;"lastName" ? : string;"password" ? : string;"phone" ? : string;"userStatus" ? : number;"username" ? : string;}
 ```
