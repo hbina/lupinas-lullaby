@@ -1,0 +1,19 @@
+stages:
+  - test
+
+basic_commands:
+  stage: test
+  image: rust:latest
+  script:
+    - echo "hello"
+    - echo "world"
+
+cargo_test:
+  stage: test
+  image: rust:latest
+  script: cargo test --all
+
+cargo_build:
+  stage: test
+  image: rust:latest
+  script: cargo build --release
