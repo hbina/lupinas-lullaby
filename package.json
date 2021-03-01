@@ -5,7 +5,8 @@
   "type": "commonjs",
   "main": "index.js",
   "files": [
-    "npm/**/*"
+    "npm/**/*",
+    "package-lock.json"
   ],
   "bin": {
     "lupinas-lullaby": "./npm/run.js"
@@ -23,7 +24,7 @@
     "cli",
     "swagger"
   ],
-  "author": "",
+  "author": "Hanif Ariffin <hanif.ariffin.4326@gmail.com>",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/hbina/lupinas-lullaby/issues"
