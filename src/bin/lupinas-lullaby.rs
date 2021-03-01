@@ -48,10 +48,8 @@ If this value is not specified, it will simply write to stdout.
         )
         .get_matches();
     let result = if let Some(file) = matches.value_of("file") {
-        println!("Opening file `{}`", file);
         openapi::use_spec(&openapi::from_path(file))
     } else if let Some(url) = matches.value_of("url") {
-        println!("Opening url `{}`", url);
         let auth_username = matches.value_of("auth_user").unwrap_or("");
         let auth_password = matches.value_of("auth_password");
         let res = Client::new()
@@ -66,7 +64,6 @@ If this value is not specified, it will simply write to stdout.
             panic!("HTTP GET response returned error.\n{:#?}", res)
         }
     } else {
-        println!("Reading input from stdin");
         let mut buffer = String::new();
         std::io::Read::read_to_string(&mut std::io::stdin(), &mut buffer).unwrap();
         let result = openapi::use_spec(&serde_yaml::from_str(&buffer).unwrap());

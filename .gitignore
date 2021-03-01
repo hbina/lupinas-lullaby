@@ -127,4 +127,3 @@ Cargo.lock
 *.ts
 *.js
 builds/
-*.json

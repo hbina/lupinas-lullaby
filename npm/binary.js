@@ -36,11 +36,6 @@ const supportedPlatforms = [
 const getPlatformMetadata = () => {
   const type = os.type();
   const architecture = os.arch();
-  console.log(
-    `You have type:${JSON.stringify(type)} architecture:${JSON.stringify(
-      architecture
-    )}`
-  );
   for (const platform of supportedPlatforms) {
     if (type === platform.TYPE && architecture === platform.ARCHITECTURE) {
       return platform;
