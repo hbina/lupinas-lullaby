@@ -127,3 +127,4 @@ Cargo.lock
 *.ts
 *.js
 builds/
+osxcross

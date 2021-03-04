@@ -11,10 +11,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v1
-
       - name: Run tests
         run: cargo test --verbose
-
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -36,15 +34,7 @@ jobs:
           mkdir builds/lupinas-lullaby-linux
           cp target/x86_64-unknown-linux-gnu/release/lupinas-lullaby builds/lupinas-lullaby-linux/lupinas-lullaby-linux
           tar -C builds -czvf dist/lupinas-lullaby-linux.tar.gz lupinas-lullaby-linux
-      - name: Cache Mac OS dependencies
-        id: cache-macos
-        uses: actions/cache@v1
-        with:
-          path: osxcross
-          key: ${{ runner.os }}-osxcross
-
       - name: Install Mac OS dependencies
-        if: steps.cache-macos.outputs.cache-hit != 'true'
         run: |
           git clone https://github.com/tpoechtrager/osxcross
           cd osxcross
