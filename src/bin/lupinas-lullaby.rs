@@ -36,8 +36,8 @@ pub fn main() -> Result<(), Box<dyn Error>> {
                 .takes_value(true),
         )
         .arg(
-            clap::Arg::with_name("outfile")
-                .long("outfile")
+            clap::Arg::with_name("write")
+                .long("write")
                 .help(
                     r##"The destination file to write to.
 If this value is not specified, it will simply write to stdout.
@@ -45,6 +45,13 @@ If this value is not specified, it will simply write to stdout.
                 )
                 .required(false)
                 .takes_value(true),
+        )
+        .arg(
+            clap::Arg::with_name("stdin")
+                .long("stdin")
+                .help("Accepts input from stdin")
+                .required(false)
+                .takes_value(false),
         )
         .get_matches();
     let result = if let Some(file) = matches.value_of("file") {
@@ -61,22 +68,27 @@ If this value is not specified, it will simply write to stdout.
             let res = res.bytes().unwrap();
             openapi::use_spec(&openapi::from_bytes(&res))
         } else {
-            panic!("HTTP GET response returned error.\n{:#?}", res)
+            eprintln!("Http request failed with response:\n{:#?}", res);
+            return Ok(());
         }
-    } else {
+    } else if let Some(_) = matches.value_of("stdin") {
         let mut buffer = String::new();
         std::io::Read::read_to_string(&mut std::io::stdin(), &mut buffer).unwrap();
         let result = openapi::use_spec(&serde_yaml::from_str(&buffer).unwrap());
         result
+    } else {
+        eprintln!("Please enter an input with '--input' or '--stdin'. See help for more info.");
+        return Ok(());
     };
-    if let Some(outfile) = matches.value_of("outfile") {
+    if let Some(write) = matches.value_of("write") {
         let mut file = OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
-            .open(outfile)
+            .open(write)
             .unwrap();
         std::io::Write::write_all(&mut file, result.as_bytes()).unwrap();
+        std::io::Write::flush(&mut file).unwrap();
     } else {
         println!("{}", result);
     }

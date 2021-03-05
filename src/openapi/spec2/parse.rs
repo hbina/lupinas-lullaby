@@ -1,5 +1,5 @@
 use super::spec::{Schema, Spec2};
-use std::fmt::Display;
+use crate::repr::{JavaScriptType, JavaScriptValue, RowTriplet};
 
 // TODO: Validate type at root is object?
 pub fn convert_schema_to_anonymous_object(schema: &Schema) -> JavaScriptType {
@@ -10,11 +10,7 @@ pub fn convert_schema_to_anonymous_object(schema: &Schema) -> JavaScriptType {
             .map(|(name, schema)| {
                 let required = required_names.map(|x| x.contains(&name)).unwrap_or(false);
                 let ttype = convert_schema_type_to_javascript_type(schema);
-                RowTriplet {
-                    name: String::from(name),
-                    required,
-                    ttype,
-                }
+                RowTriplet::from_triplet(name.clone(), required, ttype)
             })
             .collect::<Vec<RowTriplet>>();
         JavaScriptType::AnonymousObject(properties)
@@ -38,7 +34,16 @@ pub fn convert_schema_type_to_javascript_type(schema: &Schema) -> JavaScriptType
             "integer" | "number" => JavaScriptType::typename("number"),
             "string" => {
                 if let Some(enums) = schema.enum_values.as_ref() {
-                    JavaScriptType::Sum(enums.clone())
+                    JavaScriptType::Sum(
+                        enums
+                            .iter()
+                            .map(|v| {
+                                JavaScriptType::Value(Box::new(JavaScriptValue::String(
+                                    v.to_string(),
+                                )))
+                            })
+                            .collect(),
+                    )
                 } else if let Some(format) = schema.format.as_ref() {
                     match format.as_str() {
                         "date-time" => JavaScriptType::typename("Date"),
@@ -65,10 +70,10 @@ pub fn convert_schema_type_to_javascript_type(schema: &Schema) -> JavaScriptType
 
 pub fn parse_root_schema_object_to_javascript_construct(
     (name, schema): (&String, &Schema),
-) -> String {
+) -> (String, JavaScriptType) {
     let name = name.to_string();
     let ttype = convert_schema_type_to_javascript_type(schema);
-    format!("export type {} = {}", name, ttype)
+    (name, ttype)
 }
 
 pub fn parse_reference(reference: &str) -> String {
@@ -76,98 +81,17 @@ pub fn parse_reference(reference: &str) -> String {
     if prefix == "#/definitions/" {
         String::from(name)
     } else {
-        panic!(
-            "{:#?}",
-            ParseError::InvalidReference(String::from(reference))
-        )
+        let result = reference.to_string();
+        panic!("Unable to parse reference:'{}'", result);
     }
 }
 
-pub fn use_spec2(spec: &Spec2) -> String {
+pub fn use_spec2(spec: &Spec2) -> Vec<(String, JavaScriptType)> {
     match spec.definitions.as_ref() {
         Some(definitions) => definitions
             .iter()
             .map(parse_root_schema_object_to_javascript_construct)
-            .collect::<Vec<String>>()
-            .join("\n"),
-        None => String::new(),
+            .collect(),
+        None => vec![],
     }
-}
-
-#[derive(Debug, Clone)]
-pub enum JavaScriptType {
-    Array(Box<JavaScriptType>),
-    Product(Vec<JavaScriptType>),
-    Sum(Vec<String>),
-    Typename(String),
-    AnonymousObject(Vec<RowTriplet>),
-}
-
-impl JavaScriptType {
-    pub fn typename<T: Into<String>>(str: T) -> JavaScriptType {
-        JavaScriptType::Typename(str.into())
-    }
-}
-
-impl Display for JavaScriptType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                JavaScriptType::Array(o) => {
-                    format!("{}[]", o)
-                }
-                JavaScriptType::AnonymousObject(o) => {
-                    format!(
-                        "{{{}}}",
-                        o.iter().map(|r| { format!("{};", r) }).collect::<String>()
-                    )
-                }
-                JavaScriptType::Product(p) => {
-                    p.iter()
-                        .map(|x| format!("{}", x))
-                        .collect::<Vec<String>>()
-                        .join("&")
-                }
-                JavaScriptType::Sum(names) => {
-                    let count = names.iter().len();
-                    names
-                        .iter()
-                        .enumerate()
-                        .map(|(idx, s)| {
-                            let last_element = count == idx + 1;
-                            let div_operator = if last_element { "" } else { "|" };
-                            format!("\"{}\" {}", s, div_operator)
-                        })
-                        .collect::<String>()
-                }
-                JavaScriptType::Typename(o) => o.to_string(),
-            }
-        )
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct RowTriplet {
-    name: String,
-    required: bool,
-    ttype: JavaScriptType,
-}
-
-impl Display for RowTriplet {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "\"{}\" {} : {}",
-            self.name,
-            if self.required { "" } else { "?" },
-            self.ttype
-        )
-    }
-}
-
-#[derive(Debug)]
-pub enum ParseError {
-    InvalidReference(String),
 }

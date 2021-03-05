@@ -1,3 +1,4 @@
+mod repr;
 mod spec2;
 mod spec3;
 
@@ -34,10 +35,15 @@ pub fn from_bytes(read: &[u8]) -> OpenApi {
 }
 
 pub fn use_spec(spec: &OpenApi) -> String {
-    match spec {
-        OpenApi::V2(spec) => use_spec2(&spec),
+    let result = match spec {
+        OpenApi::V2(spec) => use_spec2(spec),
         OpenApi::V3(spec) => use_spec3(spec),
-    }
+    };
+    result
+        .iter()
+        .map(|(name, ttype)| format!("export type {} = {};", name, ttype))
+        .collect::<Vec<String>>()
+        .join("\n")
 }
 
 #[test]
