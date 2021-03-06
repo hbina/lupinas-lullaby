@@ -1,19 +1,100 @@
 stages:
   - test
+  - build
+  - release
 
-basic_commands:
+variables:
+  CARGO_HOME: "./.cargo"
+  RUSTUP_HOME: "./.rustup"
+
+# Docker configurations
+image: ubuntu:latest
+default:
+  cache:
+    policy: pull-push
+    paths:
+      - target/
+  artifacts:
+    paths:
+      - dist/
+
+test:
   stage: test
   image: rust:latest
+  except:
+    - tags
   script:
-    - echo "hello"
-    - echo "world"
+    - cargo check
+    - cargo test --all
 
-cargo_test:
-  stage: test
-  image: rust:latest
-  script: cargo test --all
+build:
+  stage: build
+  only:
+    - tags
+  script:
+    # Configure TZ
+    - export DEBIAN_FRONTEND=noninteractive
+    # - export TZ=Europe/Kiev
+    # - ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-cargo_build:
-  stage: test
-  image: rust:latest
-  script: cargo build --release
+    # Prepare dependencies
+    - apt-get update -y
+    - apt-get install -y --no-install-recommends gcc-mingw-w64-x86-64 wget build-essential cmake git curl libssl-dev ca-certificates pkg-config
+    # - update-ca-certificate
+
+    # Install OpenSSL
+    # - git clone git://github.com/openssl/openssl.git --branch OpenSSL_1_0_2-stable --single-branch openssl_source
+    # - cd openssl_source
+    # - OPENSSL_DIR=`pwd`
+    # - ./config --prefix="$OPENSSL_DIR/_install" -no-shared
+    # - make && make install
+    # - export OPENSSL_STATIC=true
+    # - export OPENSSL_DIR="$OPENSSL_DIR/_install"
+    # - cd ..
+
+    # Install Rust
+    - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | SSL_CERT_DIR=/etc/ssl/certs sh -s -- -y --verbose --profile minimal
+    - source $HOME/.cargo/env
+    - rustup target add x86_64-pc-windows-gnu
+    - rustup target add x86_64-unknown-linux-gnu
+    - rustup target add x86_64-apple-darwin
+    - cargo --version
+
+    # Just to be sure
+    - cargo check
+    - cargo test --all
+
+    # Install dependencies for MacOS cross-compilation
+    - git clone --recursive https://github.com/tpoechtrager/osxcross
+    - cd osxcross
+    - tools/get_dependencies.sh
+    - wget -nc https://s3.dockerproject.org/darwin/v2/MacOSX10.10.sdk.tar.xz
+    - mv MacOSX10.10.sdk.tar.xz tarballs/
+    - UNATTENDED=yes OSX_VERSION_MIN=10.7 ./build.sh
+    - cd ..
+    - export PATH="$(pwd)/osxcross/target/bin:$PATH"
+    - export LIBZ_SYS_STATIC=1
+    - export CC=o64-clang
+    - export CXX=o64-clang++
+
+    # Prepare folders
+    - mkdir builds
+    - mkdir dist
+
+    # Linux installation
+    - cargo rustc --bin lupinas-lullaby --release --verbose --target=x86_64-unknown-linux-gnu
+    - mkdir builds/lupinas-lullaby-linux
+    - cp target/x86_64-unknown-linux-gnu/release/lupinas-lullaby builds/lupinas-lullaby-linux/lupinas-lullaby-linux
+    - tar -C builds -czvf dist/lupinas-lullaby-linux.tar.gz lupinas-lullaby-linux
+
+    # Windows installation
+    - cargo rustc --bin lupinas-lullaby --release --verbose --target=x86_64-pc-windows-gnu -- -C linker=x86_64-w64-mingw32-gcc
+    - mkdir builds/lupinas-lullaby-win64
+    - cp target/x86_64-pc-windows-gnu/release/lupinas-lullaby.exe builds/lupinas-lullaby-win64/lupinas-lullaby-win64.exe
+    - tar -C builds -czvf dist/lupinas-lullaby-win64.tar.gz lupinas-lullaby-win64
+
+    # MacOS installion
+    # - cargo build --bin lupinas-lullaby --release --verbose --target x86_64-apple-darwin
+    # - mkdir builds/lupinas-lullaby-macos
+    # - cp target/x86_64-apple-darwin/release/lupinas-lullaby builds/lupinas-lullaby-macos/lupinas-lullaby-macos
+    # - tar -C builds -czvf dist/lupinas-lullaby-macos.tar.gz lupinas-lullaby-macos
