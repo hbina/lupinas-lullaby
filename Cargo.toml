@@ -12,10 +12,9 @@ include = ["src/**/*", "Cargo.toml"]
 
 [dependencies]
 clap = "2.33.3"
-reqwest = { version = "0.11.0", features = ["blocking", "json"] }
+reqwest = { version = "0.11.1", features = ["blocking", "json"] }
 serde = { version = "1.0.123", features = ["derive"] }
-serde_json = "1.0.61"
-serde_yaml = "0.8.15"
+serde_yaml = "0.8"
 
 [profile.release]
 lto = true
@@ -25,4 +24,4 @@ name = "lupinas-lullaby"
 
 [lib]
 name = "openapi"
-path = "src/openapi/src/lib.rs"
+path = "src/openapi/lib.rs"
