@@ -2,6 +2,7 @@ mod repr;
 mod spec2;
 mod spec3;
 
+use self::repr::filter_empty_types;
 use self::{
     spec2::{use_spec2, Spec2},
     spec3::{use_spec3, Spec3},
@@ -34,13 +35,21 @@ pub fn from_bytes(read: &[u8]) -> OpenApi {
     serde_yaml::from_slice::<OpenApi>(read).unwrap()
 }
 
-pub fn use_spec(spec: &OpenApi) -> String {
-    let result = match spec {
+pub fn use_spec(spec: &OpenApi, skip: bool) -> String {
+    let types = match spec {
         OpenApi::V2(spec) => use_spec2(spec),
         OpenApi::V3(spec) => use_spec3(spec),
     };
-    result
-        .iter()
+    types
+        .into_iter()
+        .filter_map(|(name, tt)| {
+            if skip {
+                let result = filter_empty_types(tt).map(|tt| (name, tt));
+                result
+            } else {
+                Some((name, tt))
+            }
+        })
         .map(|(name, ttype)| format!("export type {} = {};", name, ttype))
         .collect::<Vec<String>>()
         .join("\n")
@@ -53,7 +62,7 @@ pub fn test_v2_json_examples() {
         .map(|res| res.unwrap().path())
         .filter(|path| path.is_file())
         .map(|x| from_path(x))
-        .map(|spec| use_spec(&spec))
+        .map(|spec| use_spec(&spec, false))
         .collect::<Vec<_>>();
 }
 
@@ -64,7 +73,7 @@ pub fn test_v2_yaml_examples() {
         .map(|res| res.unwrap().path())
         .filter(|path| path.is_file())
         .map(|x| from_path(x))
-        .map(|spec| use_spec(&spec))
+        .map(|spec| use_spec(&spec, false))
         .collect::<Vec<_>>();
 }
 
@@ -75,6 +84,6 @@ pub fn test_v3_examples() {
         .map(|res| res.unwrap().path())
         .filter(|path| path.is_file())
         .map(|x| from_path(x))
-        .map(|spec| use_spec(&spec))
+        .map(|spec| use_spec(&spec, false))
         .collect::<Vec<_>>();
 }
