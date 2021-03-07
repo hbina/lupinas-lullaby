@@ -94,7 +94,8 @@ If this value is not specified, it will simply write to stdout.
             .read(true)
             .write(true)
             .create(true)
-            .append(true)
+            .truncate(true)
+            .append(false)
             .open(write)
             .unwrap();
         std::io::Write::write_all(&mut file, stringified.as_bytes()).unwrap();
