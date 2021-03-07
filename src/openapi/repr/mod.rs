@@ -63,7 +63,7 @@ impl From<&JavaScriptValue> for String {
                     "{{{}}}",
                     o.iter()
                         .map(|(name, value)| format!(
-                            "{} : {} ",
+                            "\"{}\":{}",
                             String::from(name),
                             String::from(value)
                         ))
@@ -102,9 +102,9 @@ impl std::fmt::Display for JavaScriptType {
                 }
                 JavaScriptType::AnonymousObject(o) => {
                     format!(
-                        "{{\n{}\n}}",
+                        "{{{}}}",
                         o.iter()
-                            .map(|r| { format!("\t{};", r) })
+                            .map(|r| { format!("{};", r) })
                             .collect::<Vec<String>>()
                             .join("\n")
                     )
@@ -113,14 +113,13 @@ impl std::fmt::Display for JavaScriptType {
                     p.iter()
                         .map(|x| format!("{}", x))
                         .collect::<Vec<String>>()
-                        .join(" & ")
+                        .join("&")
                 }
-                JavaScriptType::Sum(names) => {
-                    names
-                        .iter()
+                JavaScriptType::Sum(s) => {
+                    s.iter()
                         .map(|s| format!("{}", s))
                         .collect::<Vec<String>>()
-                        .join(" | ")
+                        .join("|")
                 }
                 JavaScriptType::Typename(o) => o.to_string(),
                 JavaScriptType::Value(v) => {
@@ -152,10 +151,56 @@ impl std::fmt::Display for RowTriplet {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "\"{}\" {} : {}",
+            "\"{}\"{}:{}",
             self.name,
             if self.required { "" } else { "?" },
             self.ttype
         )
+    }
+}
+
+pub fn filter_empty_types(tt: JavaScriptType) -> Option<JavaScriptType> {
+    match tt {
+        JavaScriptType::Array(t) => {
+            filter_empty_types(*t).map(|t| JavaScriptType::Array(Box::new(t)))
+        }
+        JavaScriptType::Product(p) => {
+            let result = p
+                .iter()
+                .filter_map(|v| filter_empty_types(v.clone()))
+                .collect::<Vec<JavaScriptType>>();
+            if result.is_empty() {
+                None
+            } else {
+                Some(JavaScriptType::Product(result))
+            }
+        }
+        JavaScriptType::Sum(s) => {
+            let result = s
+                .iter()
+                .filter_map(|v| filter_empty_types(v.clone()))
+                .collect::<Vec<JavaScriptType>>();
+            if result.is_empty() {
+                None
+            } else {
+                Some(JavaScriptType::Sum(result))
+            }
+        }
+        JavaScriptType::AnonymousObject(o) => {
+            if o.is_empty() {
+                None
+            } else {
+                Some(JavaScriptType::AnonymousObject(
+                    o.into_iter()
+                        .filter_map(|v| {
+                            filter_empty_types(v.ttype.clone())
+                                .map(|tt| RowTriplet::from_triplet(v.name, v.required, tt))
+                        })
+                        .collect(),
+                ))
+            }
+        }
+        JavaScriptType::Value(v) => Some(JavaScriptType::Value(v)),
+        JavaScriptType::Typename(t) => Some(JavaScriptType::Typename(t)),
     }
 }
