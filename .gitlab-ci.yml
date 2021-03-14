@@ -5,6 +5,10 @@ stages:
 
 default:
   image: rust:latest
+  cache:
+    policy: pull-push
+    paths:
+      - "target"
   artifacts:
     paths:
       - "dist"
