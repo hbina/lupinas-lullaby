@@ -65,7 +65,8 @@ Possibly only relevant in languages with structural typing e.g. TypeScript."#)
             clap::Arg::with_name("skip-type-name")
                 .long("skip-type-name")
                 .help(r#"Skip types with the given name.
-Useful if the swagger file overwrites some implicitly imported classes or its messing up type checking."#)
+Useful if the swagger file overwrites some implicitly imported classes or its messing up type checking.
+Takes multiple occurences."#)
                 .required(false)
                 .takes_value(true)
                 .multiple(true)

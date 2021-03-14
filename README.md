@@ -5,24 +5,30 @@ Parse Swagger files (v2 and v3) into a Typescript interface file.
 ## Help
 
 ```
-lupinas-lullaby 0.1.4
+lupinas-lullaby 0.3.2
 Hanif Bin Ariffin <hanif.ariffin.4326@gmail.com>
-Automatically generate TypeScript interfaces from a Swagger spec file.
 
 USAGE:
-    lupinas-lullaby [OPTIONS]
+    lupinas-lullaby [FLAGS] [OPTIONS]
 
 FLAGS:
-    -h, --help       Prints help information
-    -V, --version    Prints version information
+    -h, --help                Prints help information
+        --skip-empty-types    Skip empty types because some linter will complain.
+                              Possibly only relevant in languages with structural typing e.g. TypeScript.
+        --stdin               Accepts input from stdin
+    -V, --version             Prints version information
 
 OPTIONS:
-        --auth_password <auth_password>    The basic authentication username payload to pass along.
-        --auth_user <auth_user>            The basic authentication password payload to pass along.
-        --file <file>                      The Swagger file to parse.
-        --outfile <outfile>                The destination file to write to.
-                                           If this value is not specified, it will simply write to stdout.
-        --url <url>                        The URL to the Swagger file. Must be a URL to a JSON/YAML resource
+        --auth-password <auth-password>         The basic authentication username payload to pass along.
+        --auth-user <auth-user>                 The basic authentication password payload to pass along.
+        --file <file>                           The Swagger file to parse.
+        --skip-type-name <skip-type-name>...    Skip types with the given name.
+                                                Useful if the swagger file overwrites some implicitly imported classes
+                                                or its messing up type checking.
+                                                Takes multiple occurences.
+        --url <url>                             The URL to the Swagger file. Must be a URL to a JSON/YAML resource
+        --write <write>                         The destination file to write to.
+                                                If this value is not specified, it will simply write to stdout.
 ```
 
 ## Example
