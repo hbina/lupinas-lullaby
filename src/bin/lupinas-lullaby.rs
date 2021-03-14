@@ -54,23 +54,34 @@ If this value is not specified, it will simply write to stdout.
                 .takes_value(false),
         )
         .arg(
-            clap::Arg::with_name("skip-invalid-types")
-                .long("skip-invalid-types")
-                .help("Skip invalid types like overwriting standard JS and empty types")
+            clap::Arg::with_name("skip-empty-types")
+                .long("skip-empty-types")
+                .help(r#"Skip empty types because some linter will complain.
+Possibly only relevant in languages with structural typing e.g. TypeScript."#)
                 .required(false)
                 .takes_value(false),
+        )
+        .arg(
+            clap::Arg::with_name("skip-type-name")
+                .long("skip-type-name")
+                .help(r#"Skip types with the given name.
+Useful if the swagger file overwrites some implicitly imported classes or its messing up type checking."#)
+                .required(false)
+                .takes_value(true)
+                .multiple(true)
+                .number_of_values(1),
         )
         .get_matches();
     let spec = if let Some(file) = matches.value_of("file") {
         openapi::from_path(file)
     } else if let Some(url) = matches.value_of("url") {
-        let auth_username = matches.value_of("auth-user").unwrap_or("");
+        let auth_username = matches.value_of("auth-user");
         let auth_password = matches.value_of("auth-password");
-        let res = Client::new()
-            .get(url)
-            .basic_auth(auth_username, auth_password)
-            .send()
-            .unwrap();
+        let mut res = Client::new().get(url);
+        if let Some(auth_username) = auth_username {
+            res = res.basic_auth(auth_username, auth_password);
+        }
+        let res = res.send().unwrap();
         if res.status() == StatusCode::OK {
             let res = res.bytes().unwrap();
             openapi::from_bytes(&res)
@@ -87,8 +98,12 @@ If this value is not specified, it will simply write to stdout.
         eprintln!("Please enter an input with '--input' or '--stdin'. See help for more info.");
         return Ok(());
     };
-    let skip = matches.is_present("skip-invalid-types");
-    let stringified = openapi::use_spec(&spec, skip);
+    let skip = matches.is_present("skip-empty-types");
+    let typenames_to_skip = matches
+        .values_of("skip-type-name")
+        .unwrap_or_default()
+        .collect::<Vec<_>>();
+    let stringified = openapi::use_spec(&spec, skip, typenames_to_skip);
     if let Some(write) = matches.value_of("write") {
         let mut file = OpenOptions::new()
             .read(true)

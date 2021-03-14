@@ -7,6 +7,7 @@ use self::{
     spec2::{use_spec2, Spec2},
     spec3::{use_spec3, Spec3},
 };
+use repr::filter_unwanted_types;
 use serde::{Deserialize, Serialize};
 use std::{fs::File, io::Read, path::Path};
 
@@ -35,7 +36,7 @@ pub fn from_bytes(read: &[u8]) -> OpenApi {
     serde_yaml::from_slice::<OpenApi>(read).unwrap()
 }
 
-pub fn use_spec(spec: &OpenApi, skip: bool) -> String {
+pub fn use_spec(spec: &OpenApi, skip_empty: bool, skip_types: Vec<&str>) -> String {
     let types = match spec {
         OpenApi::V2(spec) => use_spec2(spec),
         OpenApi::V3(spec) => use_spec3(spec),
@@ -43,13 +44,13 @@ pub fn use_spec(spec: &OpenApi, skip: bool) -> String {
     types
         .into_iter()
         .filter_map(|(name, tt)| {
-            if skip {
-                let result = filter_empty_types(tt).map(|tt| (name, tt));
-                result
+            if skip_empty {
+                filter_empty_types(tt).map(|tt| (name, tt))
             } else {
                 Some((name, tt))
             }
         })
+        .filter_map(|(name, tt)| filter_unwanted_types(tt, &skip_types).map(|tt| (name, tt)))
         .map(|(name, ttype)| format!("export type {} = {};", name, ttype))
         .collect::<Vec<String>>()
         .join("\n")
@@ -62,7 +63,7 @@ pub fn test_v2_json_examples() {
         .map(|res| res.unwrap().path())
         .filter(|path| path.is_file())
         .map(|x| from_path(x))
-        .map(|spec| use_spec(&spec, false))
+        .map(|spec| use_spec(&spec, false, vec![]))
         .collect::<Vec<_>>();
 }
 
@@ -73,7 +74,7 @@ pub fn test_v2_yaml_examples() {
         .map(|res| res.unwrap().path())
         .filter(|path| path.is_file())
         .map(|x| from_path(x))
-        .map(|spec| use_spec(&spec, false))
+        .map(|spec| use_spec(&spec, false, vec![]))
         .collect::<Vec<_>>();
 }
 
@@ -84,6 +85,6 @@ pub fn test_v3_examples() {
         .map(|res| res.unwrap().path())
         .filter(|path| path.is_file())
         .map(|x| from_path(x))
-        .map(|spec| use_spec(&spec, false))
+        .map(|spec| use_spec(&spec, false, vec![]))
         .collect::<Vec<_>>();
 }
