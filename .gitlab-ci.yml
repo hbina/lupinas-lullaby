@@ -5,14 +5,10 @@ stages:
 
 default:
   image: rust:latest
-  cache:
-    policy: pull-push
-    paths:
-      - "target"
   artifacts:
     paths:
-      - "dist"
-      - "builds"
+      - dist/lupinas-lullaby-win64.tar.gz
+      - dist/lupinas-lullaby-linux.tar.gz
 
 test:
   stage: test
@@ -93,9 +89,9 @@ release_job:
   stage: release
   image: registry.gitlab.com/gitlab-org/release-cli:latest
   script:
-    - echo "$CI_COMMIT_HASH"
+    - echo $CI_COMMIT_SHA
   release:
-    name: "Release $CI_COMMIT_HASH"
+    name: "Release $CI_COMMIT_SHA"
     description: "Created using the release-cli $EXTRA_DESCRIPTION" # $EXTRA_DESCRIPTION must be defined
-    tag_name: "$CI_COMMIT_HASH" # elsewhere in the pipeline.
-    ref: "$CI_COMMIT_HASH"
+    tag_name: "$CI_COMMIT_SHA" # elsewhere in the pipeline.
+    ref: "$CI_COMMIT_SHA"
