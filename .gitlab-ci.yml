@@ -1,16 +1,26 @@
+stages:
+  - test
+  - build
+  - release
+
+default:
+  image: rust:latest
+  artifacts:
+    paths:
+      - "dist"
+      - "builds"
+
 test:
   stage: test
-  image: rust:latest
   except:
     - tags
   script:
+    - cargo --version
     - cargo check
     - cargo test --all
 
 build:
   stage: build
-  only:
-    - tags
   script:
     # Configure TZ
     - export DEBIAN_FRONTEND=noninteractive
@@ -33,16 +43,11 @@ build:
     # - cd ..
 
     # Install Rust
-    - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | SSL_CERT_DIR=/etc/ssl/certs sh -s -- -y --verbose --profile minimal
-    - source $HOME/.cargo/env
+    # - curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | SSL_CERT_DIR=/etc/ssl/certs sh -s -- -y --verbose --profile minimal
+    # - source $HOME/.cargo/env
     - rustup target add x86_64-pc-windows-gnu
     - rustup target add x86_64-unknown-linux-gnu
     - rustup target add x86_64-apple-darwin
-    - cargo --version
-
-    # Just to be sure
-    - cargo check
-    - cargo test --all
 
     # Install dependencies for MacOS cross-compilation
     - git clone --recursive https://github.com/tpoechtrager/osxcross
@@ -78,3 +83,14 @@ build:
     # - mkdir builds/lupinas-lullaby-macos
     # - cp target/x86_64-apple-darwin/release/lupinas-lullaby builds/lupinas-lullaby-macos/lupinas-lullaby-macos
     # - tar -C builds -czvf dist/lupinas-lullaby-macos.tar.gz lupinas-lullaby-macos
+
+release_job:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  script:
+    - echo 'running release_job'
+  release:
+    name: "Release $CI_COMMIT_TAG"
+    description: "Created using the release-cli $EXTRA_DESCRIPTION" # $EXTRA_DESCRIPTION must be defined
+    tag_name: "$CI_COMMIT_TAG" # elsewhere in the pipeline.
+    ref: "$CI_COMMIT_TAG"
