@@ -1,3 +1,5 @@
+use std::ops::Not;
+
 #[derive(Debug, Clone)]
 pub enum JavaScriptValue {
     Null,
@@ -202,5 +204,56 @@ pub fn filter_empty_types(tt: JavaScriptType) -> Option<JavaScriptType> {
         }
         JavaScriptType::Value(v) => Some(JavaScriptType::Value(v)),
         JavaScriptType::Typename(t) => Some(JavaScriptType::Typename(t)),
+    }
+}
+
+pub fn filter_unwanted_types(tt: JavaScriptType, skip_types: &Vec<&str>) -> Option<JavaScriptType> {
+    match tt {
+        JavaScriptType::Array(t) => {
+            filter_unwanted_types(*t, skip_types).map(|t| JavaScriptType::Array(Box::new(t)))
+        }
+        JavaScriptType::Product(p) => {
+            let result = p
+                .iter()
+                .cloned()
+                .filter_map(|v| filter_unwanted_types(v, skip_types))
+                .collect::<Vec<JavaScriptType>>();
+            if result.is_empty() {
+                None
+            } else {
+                Some(JavaScriptType::Product(result))
+            }
+        }
+        JavaScriptType::Sum(s) => {
+            let result = s
+                .iter()
+                .cloned()
+                .filter_map(|v| filter_unwanted_types(v, skip_types))
+                .collect::<Vec<JavaScriptType>>();
+            if result.is_empty() {
+                None
+            } else {
+                Some(JavaScriptType::Sum(result))
+            }
+        }
+        JavaScriptType::AnonymousObject(o) => {
+            if o.is_empty() {
+                None
+            } else {
+                Some(JavaScriptType::AnonymousObject(
+                    o.into_iter()
+                        .filter_map(|v| {
+                            filter_unwanted_types(v.ttype.clone(), skip_types)
+                                .map(|tt| RowTriplet::from_triplet(v.name, v.required, tt))
+                        })
+                        .collect(),
+                ))
+            }
+        }
+        JavaScriptType::Value(v) => Some(JavaScriptType::Value(v)),
+        JavaScriptType::Typename(t) => skip_types
+            .contains(&t.as_str())
+            .not()
+            .then(|| JavaScriptType::Typename(t)),
     }
 }
