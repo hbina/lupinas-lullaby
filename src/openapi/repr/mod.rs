@@ -189,17 +189,17 @@ pub fn filter_empty_types(tt: JavaScriptType) -> Option<JavaScriptType> {
             }
         }
         JavaScriptType::AnonymousObject(o) => {
-            if o.is_empty() {
+            let result = o
+                .into_iter()
+                .filter_map(|v| {
+                    filter_empty_types(v.ttype.clone())
+                        .map(|tt| RowTriplet::from_triplet(v.name, v.required, tt))
+                })
+                .collect::<Vec<_>>();
+            if result.is_empty() {
                 None
             } else {
-                Some(JavaScriptType::AnonymousObject(
-                    o.into_iter()
-                        .filter_map(|v| {
-                            filter_empty_types(v.ttype.clone())
-                                .map(|tt| RowTriplet::from_triplet(v.name, v.required, tt))
-                        })
-                        .collect(),
-                ))
+                Some(JavaScriptType::AnonymousObject(result))
             }
         }
         JavaScriptType::Value(v) => Some(JavaScriptType::Value(v)),
