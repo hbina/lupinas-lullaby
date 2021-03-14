@@ -1,9 +1,6 @@
 extern crate clap;
 
-use reqwest::{blocking::Client, StatusCode};
-use std::{error::Error, fs::OpenOptions};
-
-pub fn main() -> Result<(), Box<dyn Error>> {
+pub fn main() {
     let matches = clap::App::new(clap::crate_name!())
         .version(clap::crate_version!())
         .author(clap::crate_authors!())
@@ -78,17 +75,17 @@ Takes multiple occurences."#)
     } else if let Some(url) = matches.value_of("url") {
         let auth_username = matches.value_of("auth-user");
         let auth_password = matches.value_of("auth-password");
-        let mut res = Client::new().get(url);
+        let mut res = reqwest::blocking::Client::new().get(url);
         if let Some(auth_username) = auth_username {
             res = res.basic_auth(auth_username, auth_password);
         }
         let res = res.send().unwrap();
-        if res.status() == StatusCode::OK {
+        if res.status() == reqwest::StatusCode::OK {
             let res = res.bytes().unwrap();
             openapi::from_bytes(&res)
         } else {
             eprintln!("Http request failed with response:\n{:#?}", res);
-            return Ok(());
+            return ();
         }
     } else if let Some(_) = matches.value_of("stdin") {
         let mut buffer = String::new();
@@ -97,7 +94,7 @@ Takes multiple occurences."#)
         result
     } else {
         eprintln!("Please enter an input with '--input' or '--stdin'. See help for more info.");
-        return Ok(());
+        return ();
     };
     let skip = matches.is_present("skip-empty-types");
     let typenames_to_skip = matches
@@ -106,7 +103,7 @@ Takes multiple occurences."#)
         .collect::<Vec<_>>();
     let stringified = openapi::use_spec(&spec, skip, typenames_to_skip);
     if let Some(write) = matches.value_of("write") {
-        let mut file = OpenOptions::new()
+        let mut file = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
@@ -119,5 +116,4 @@ Takes multiple occurences."#)
     } else {
         println!("{}", stringified);
     }
-    Ok(())
 }
