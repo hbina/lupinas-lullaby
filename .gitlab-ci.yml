@@ -67,18 +67,18 @@ build:
     - export CXX=o64-clang++
 
     # Prepare folders
-    # - mkdir builds
-    # - mkdir dist
+    - mkdir -p builds
+    - mkdir -p dist
 
     # Linux installation
     - cargo rustc --bin lupinas-lullaby --release --verbose --target=x86_64-unknown-linux-gnu
-    - mkdir builds/lupinas-lullaby-linux
+    - mkdir -p builds/lupinas-lullaby-linux
     - cp target/x86_64-unknown-linux-gnu/release/lupinas-lullaby builds/lupinas-lullaby-linux/lupinas-lullaby-linux
     - tar -C builds -czvf dist/lupinas-lullaby-linux.tar.gz lupinas-lullaby-linux
 
     # Windows installation
     - cargo rustc --bin lupinas-lullaby --release --verbose --target=x86_64-pc-windows-gnu -- -C linker=x86_64-w64-mingw32-gcc
-    - mkdir builds/lupinas-lullaby-win64
+    - mkdir -p builds/lupinas-lullaby-win64
     - cp target/x86_64-pc-windows-gnu/release/lupinas-lullaby.exe builds/lupinas-lullaby-win64/lupinas-lullaby-win64.exe
     - tar -C builds -czvf dist/lupinas-lullaby-win64.tar.gz lupinas-lullaby-win64
 
