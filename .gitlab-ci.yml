@@ -67,8 +67,8 @@ build:
     - export CXX=o64-clang++
 
     # Prepare folders
-    - mkdir builds
-    - mkdir dist
+    # - mkdir builds
+    # - mkdir dist
 
     # Linux installation
     - cargo rustc --bin lupinas-lullaby --release --verbose --target=x86_64-unknown-linux-gnu
