@@ -24,6 +24,7 @@ test:
     - cargo test --all
 
 build:
+  image: rust:latest
   stage: build
   script:
     # Configure TZ
@@ -54,17 +55,17 @@ build:
     - rustup target add x86_64-apple-darwin
 
     # Install dependencies for MacOS cross-compilation
-    - git clone --recursive https://github.com/tpoechtrager/osxcross
-    - cd osxcross
-    - tools/get_dependencies.sh
-    - wget -nc https://s3.dockerproject.org/darwin/v2/MacOSX10.10.sdk.tar.xz
-    - mv MacOSX10.10.sdk.tar.xz tarballs/
-    - UNATTENDED=yes OSX_VERSION_MIN=10.7 ./build.sh
-    - cd ..
-    - export PATH="$(pwd)/osxcross/target/bin:$PATH"
-    - export LIBZ_SYS_STATIC=1
-    - export CC=o64-clang
-    - export CXX=o64-clang++
+    # - git clone --recursive https://github.com/tpoechtrager/osxcross
+    # - cd osxcross
+    # - tools/get_dependencies.sh
+    # - wget -nc https://s3.dockerproject.org/darwin/v2/MacOSX10.10.sdk.tar.xz
+    # - mv MacOSX10.10.sdk.tar.xz tarballs/
+    # - UNATTENDED=yes OSX_VERSION_MIN=10.7 ./build.sh
+    # - cd ..
+    # - export PATH="$(pwd)/osxcross/target/bin:$PATH"
+    # - export LIBZ_SYS_STATIC=1
+    # - export CC=o64-clang
+    # - export CXX=o64-clang++
 
     # Prepare folders
     - mkdir -p builds
