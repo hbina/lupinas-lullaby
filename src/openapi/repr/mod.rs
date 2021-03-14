@@ -237,17 +237,17 @@ pub fn filter_unwanted_types(tt: JavaScriptType, skip_types: &Vec<&str>) -> Opti
             }
         }
         JavaScriptType::AnonymousObject(o) => {
-            if o.is_empty() {
+            let result = o
+                .into_iter()
+                .filter_map(|v| {
+                    filter_unwanted_types(v.ttype.clone(), skip_types)
+                        .map(|tt| RowTriplet::from_triplet(v.name, v.required, tt))
+                })
+                .collect::<Vec<_>>();
+            if result.is_empty() {
                 None
             } else {
-                Some(JavaScriptType::AnonymousObject(
-                    o.into_iter()
-                        .filter_map(|v| {
-                            filter_unwanted_types(v.ttype.clone(), skip_types)
-                                .map(|tt| RowTriplet::from_triplet(v.name, v.required, tt))
-                        })
-                        .collect(),
-                ))
+                Some(JavaScriptType::AnonymousObject(result))
             }
         }
         JavaScriptType::Value(v) => Some(JavaScriptType::Value(v)),
