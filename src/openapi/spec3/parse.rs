@@ -1,5 +1,7 @@
+use std::collections::HashMap;
+
 use super::spec::{ObjectOrReference, Schema, Spec3};
-use crate::repr::{JavaScriptType, JavaScriptValue, RowTriplet};
+use crate::repr::{JavaScriptType, JavaScriptValue, ObjectRow};
 
 pub fn parse_reference(reference: &str) -> String {
     let (prefix, name) = reference.split_at("#/components/schemas/".len());
@@ -43,7 +45,7 @@ fn parse_schema_object_to_javascript_strings(schema: &Schema) -> JavaScriptType 
     }
 }
 
-fn parse_schema_object_to_javascript_row_triplets(schema: &Schema) -> Vec<RowTriplet> {
+fn parse_schema_object_to_javascript_row_triplets(schema: &Schema) -> HashMap<String, ObjectRow> {
     // 1. Find the required properties.
     // 2. Iterate through properties.
     // 3. Parse each rows type, creating a triplet of (name, required, type)
@@ -60,12 +62,12 @@ fn parse_schema_object_to_javascript_row_triplets(schema: &Schema) -> Vec<RowTri
                     }
                     ObjectOrReference::Object(o) => parse_schema_object_to_javascript_type(o),
                 };
-                RowTriplet::from_triplet(name, row_required, ttype)
+                (name.clone(), ObjectRow::from_data(row_required, ttype))
             })
-            .collect::<Vec<RowTriplet>>();
+            .collect::<HashMap<_, _>>();
         result
     } else {
-        vec![]
+        HashMap::new()
     }
 }
 
@@ -139,6 +141,8 @@ pub fn use_spec3(spec: &Spec3) -> Vec<(String, JavaScriptType)> {
     }
 }
 
+const INVALID_KEY_TYPE_ERROR : &str = "Although YAML technically support having non-string keys. Only strings are valid keys in a JavaScript object.";
+
 fn parse_json_value_to_javascript_type(v: &serde_yaml::Value) -> JavaScriptValue {
     match v {
         serde_yaml::Value::Null => JavaScriptValue::Null,
@@ -150,12 +154,14 @@ fn parse_json_value_to_javascript_type(v: &serde_yaml::Value) -> JavaScriptValue
         }
         serde_yaml::Value::Mapping(o) => JavaScriptValue::Object(
             o.iter()
-                .map(|(name, value)| {
-                    (
-                        parse_json_value_to_javascript_type(name),
-                        parse_json_value_to_javascript_type(value),
-                    )
+                .filter_map(|(k, v)| match k {
+                    serde_yaml::Value::String(s) => Some((s, v)),
+                    _ => {
+                        eprintln!("error:\n{}value:\n{:#?}", INVALID_KEY_TYPE_ERROR, k);
+                        return None;
+                    }
                 })
+                .map(|(name, value)| (name.clone(), parse_json_value_to_javascript_type(value)))
                 .collect(),
         ),
     }

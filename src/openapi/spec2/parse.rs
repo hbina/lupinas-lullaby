@@ -1,5 +1,7 @@
+use std::collections::HashMap;
+
 use super::spec::{Schema, Spec2};
-use crate::repr::{JavaScriptType, JavaScriptValue, RowTriplet};
+use crate::repr::{JavaScriptType, JavaScriptValue, ObjectRow};
 
 // TODO: Validate type at root is object?
 pub fn convert_schema_to_anonymous_object(schema: &Schema) -> JavaScriptType {
@@ -10,12 +12,12 @@ pub fn convert_schema_to_anonymous_object(schema: &Schema) -> JavaScriptType {
             .map(|(name, schema)| {
                 let required = required_names.map(|x| x.contains(&name)).unwrap_or(false);
                 let ttype = convert_schema_type_to_javascript_type(schema);
-                RowTriplet::from_triplet(name.clone(), required, ttype)
+                (name.clone(), ObjectRow::from_data(required, ttype))
             })
-            .collect::<Vec<RowTriplet>>();
+            .collect::<HashMap<_, ObjectRow>>();
         JavaScriptType::AnonymousObject(properties)
     } else {
-        JavaScriptType::AnonymousObject(vec![])
+        JavaScriptType::AnonymousObject(HashMap::new())
     }
 }
 
@@ -64,7 +66,7 @@ pub fn convert_schema_type_to_javascript_type(schema: &Schema) -> JavaScriptType
             _ => JavaScriptType::typename("any"),
         }
     } else {
-        JavaScriptType::AnonymousObject(vec![])
+        JavaScriptType::AnonymousObject(HashMap::new())
     }
 }
 

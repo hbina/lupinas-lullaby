@@ -45,12 +45,12 @@ pub fn use_spec(spec: &OpenApi, skip_empty: bool, skip_types: Vec<&str>) -> Stri
         .into_iter()
         .filter_map(|(name, tt)| {
             if skip_empty {
-                filter_empty_types(tt).map(|tt| (name, tt))
+                filter_empty_types(&tt).map(|tt| (name, tt))
             } else {
                 Some((name, tt))
             }
         })
-        .filter_map(|(name, tt)| filter_unwanted_types(tt, &skip_types).map(|tt| (name, tt)))
+        .filter_map(|(name, tt)| filter_unwanted_types(&tt, &skip_types).map(|tt| (name, tt)))
         .map(|(name, ttype)| format!("export type {} = {};", name, ttype))
         .collect::<Vec<String>>()
         .join("\n")

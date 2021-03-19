@@ -1,4 +1,4 @@
-use std::ops::Not;
+use std::{collections::HashMap, ops::Not};
 
 #[derive(Debug, Clone)]
 pub enum JavaScriptValue {
@@ -7,8 +7,27 @@ pub enum JavaScriptValue {
     Boolean(bool),
     Number(f64),
     Array(Vec<JavaScriptValue>),
-    Object(Vec<(JavaScriptValue, JavaScriptValue)>),
+    Object(HashMap<String, JavaScriptValue>),
 }
+
+impl PartialEq for JavaScriptValue {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (JavaScriptValue::Array(l), JavaScriptValue::Array(r)) => l.eq(r),
+            (JavaScriptValue::Boolean(l), JavaScriptValue::Boolean(r)) => l.eq(r),
+            (JavaScriptValue::Null, JavaScriptValue::Null) => true,
+            (JavaScriptValue::Number(l), JavaScriptValue::Number(r)) => l.eq(r),
+            (JavaScriptValue::String(l), JavaScriptValue::String(r)) => l.eq(r),
+            (JavaScriptValue::Object(l), JavaScriptValue::Object(r)) => l
+                .iter()
+                .zip(r.iter())
+                .all(|((l1, l2), (r1, r2))| l1.eq(r1) && l2.eq(r2)),
+            _ => false,
+        }
+    }
+}
+
+impl Eq for JavaScriptValue {}
 
 impl From<&str> for JavaScriptValue {
     fn from(v: &str) -> Self {
@@ -83,7 +102,7 @@ pub enum JavaScriptType {
     Product(Vec<JavaScriptType>),
     Sum(Vec<JavaScriptType>),
     Typename(String),
-    AnonymousObject(Vec<RowTriplet>),
+    AnonymousObject(HashMap<String, ObjectRow>),
     Value(Box<JavaScriptValue>),
 }
 
@@ -106,7 +125,14 @@ impl std::fmt::Display for JavaScriptType {
                     format!(
                         "{{{}}}",
                         o.iter()
-                            .map(|r| { format!("{};", r) })
+                            .map(|(k, v)| {
+                                format!(
+                                    "{} {} : {};",
+                                    k,
+                                    if v.required { "" } else { "?" },
+                                    v.ttype
+                                )
+                            })
                             .collect::<Vec<String>>()
                             .join("\n")
                     )
@@ -133,43 +159,26 @@ impl std::fmt::Display for JavaScriptType {
 }
 
 #[derive(Debug, Clone)]
-pub struct RowTriplet {
-    name: String,
-    required: bool,
-    ttype: JavaScriptType,
+pub struct ObjectRow {
+    pub required: bool,
+    pub ttype: JavaScriptType,
 }
 
-impl RowTriplet {
-    pub fn from_triplet(name: String, required: bool, ttype: JavaScriptType) -> RowTriplet {
-        RowTriplet {
-            name,
-            required,
-            ttype,
-        }
+impl ObjectRow {
+    pub fn from_data(required: bool, ttype: JavaScriptType) -> ObjectRow {
+        ObjectRow { required, ttype }
     }
 }
 
-impl std::fmt::Display for RowTriplet {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "\"{}\"{}:{}",
-            self.name,
-            if self.required { "" } else { "?" },
-            self.ttype
-        )
-    }
-}
-
-pub fn filter_empty_types(tt: JavaScriptType) -> Option<JavaScriptType> {
+pub fn filter_empty_types(tt: &JavaScriptType) -> Option<JavaScriptType> {
     match tt {
         JavaScriptType::Array(t) => {
-            filter_empty_types(*t).map(|t| JavaScriptType::Array(Box::new(t)))
+            filter_empty_types(&*t).map(|t| JavaScriptType::Array(Box::new(t)))
         }
         JavaScriptType::Product(p) => {
             let result = p
                 .iter()
-                .filter_map(|v| filter_empty_types(v.clone()))
+                .filter_map(|v| filter_empty_types(v))
                 .collect::<Vec<JavaScriptType>>();
             if result.is_empty() {
                 None
@@ -180,7 +189,7 @@ pub fn filter_empty_types(tt: JavaScriptType) -> Option<JavaScriptType> {
         JavaScriptType::Sum(s) => {
             let result = s
                 .iter()
-                .filter_map(|v| filter_empty_types(v.clone()))
+                .filter_map(|v| filter_empty_types(v))
                 .collect::<Vec<JavaScriptType>>();
             if result.is_empty() {
                 None
@@ -191,32 +200,35 @@ pub fn filter_empty_types(tt: JavaScriptType) -> Option<JavaScriptType> {
         JavaScriptType::AnonymousObject(o) => {
             let result = o
                 .into_iter()
-                .filter_map(|v| {
-                    filter_empty_types(v.ttype.clone())
-                        .map(|tt| RowTriplet::from_triplet(v.name, v.required, tt))
+                .filter_map(|(k, v)| {
+                    filter_empty_types(&v.ttype)
+                        .map(|tt| (k.clone(), ObjectRow::from_data(v.required, tt)))
                 })
-                .collect::<Vec<_>>();
+                .collect::<HashMap<_, _>>();
             if result.is_empty() {
                 None
             } else {
                 Some(JavaScriptType::AnonymousObject(result))
             }
         }
-        JavaScriptType::Value(v) => Some(JavaScriptType::Value(v)),
-        JavaScriptType::Typename(t) => Some(JavaScriptType::Typename(t)),
+        JavaScriptType::Value(v) => Some(JavaScriptType::Value(v.clone())),
+        JavaScriptType::Typename(t) => Some(JavaScriptType::Typename(t.clone())),
     }
 }
 
-pub fn filter_unwanted_types(tt: JavaScriptType, skip_types: &Vec<&str>) -> Option<JavaScriptType> {
+pub fn filter_unwanted_types(
+    tt: &JavaScriptType,
+    skip_types: &Vec<&str>,
+) -> Option<JavaScriptType> {
     match tt {
         JavaScriptType::Array(t) => {
-            filter_unwanted_types(*t, skip_types).map(|t| JavaScriptType::Array(Box::new(t)))
+            filter_unwanted_types(&*t, skip_types).map(|t| JavaScriptType::Array(Box::new(t)))
         }
         JavaScriptType::Product(p) => {
             let result = p
                 .iter()
                 .cloned()
-                .filter_map(|v| filter_unwanted_types(v, skip_types))
+                .filter_map(|v| filter_unwanted_types(&v, skip_types))
                 .collect::<Vec<JavaScriptType>>();
             if result.is_empty() {
                 None
@@ -228,7 +240,7 @@ pub fn filter_unwanted_types(tt: JavaScriptType, skip_types: &Vec<&str>) -> Opti
             let result = s
                 .iter()
                 .cloned()
-                .filter_map(|v| filter_unwanted_types(v, skip_types))
+                .filter_map(|v| filter_unwanted_types(&v, skip_types))
                 .collect::<Vec<JavaScriptType>>();
             if result.is_empty() {
                 None
@@ -239,21 +251,21 @@ pub fn filter_unwanted_types(tt: JavaScriptType, skip_types: &Vec<&str>) -> Opti
         JavaScriptType::AnonymousObject(o) => {
             let result = o
                 .into_iter()
-                .filter_map(|v| {
-                    filter_unwanted_types(v.ttype.clone(), skip_types)
-                        .map(|tt| RowTriplet::from_triplet(v.name, v.required, tt))
+                .filter_map(|(k, v)| {
+                    filter_unwanted_types(&v.ttype, skip_types)
+                        .map(|tt| (k.clone(), ObjectRow::from_data(v.required, tt)))
                 })
-                .collect::<Vec<_>>();
+                .collect::<HashMap<_, _>>();
             if result.is_empty() {
                 None
             } else {
                 Some(JavaScriptType::AnonymousObject(result))
             }
         }
-        JavaScriptType::Value(v) => Some(JavaScriptType::Value(v)),
+        JavaScriptType::Value(v) => Some(JavaScriptType::Value(v.clone())),
         JavaScriptType::Typename(t) => skip_types
             .contains(&t.as_str())
             .not()
-            .then(|| JavaScriptType::Typename(t)),
+            .then(|| JavaScriptType::Typename(t.clone())),
     }
 }
