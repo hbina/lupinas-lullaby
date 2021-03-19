@@ -87,7 +87,7 @@ Takes multiple occurences."#)
             eprintln!("Http request failed with response:\n{:#?}", res);
             return ();
         }
-    } else if let Some(_) = matches.value_of("stdin") {
+    } else if matches.is_present("stdin") {
         let mut buffer = String::new();
         std::io::Read::read_to_string(&mut std::io::stdin(), &mut buffer).unwrap();
         let result = serde_yaml::from_str(&buffer).unwrap();

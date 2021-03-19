@@ -13,10 +13,10 @@ pub fn parse_reference(reference: &str) -> String {
     }
 }
 
-fn parse_schema_object_to_javascript_arrays(schema: &Schema) -> JavaScriptType {
+fn parse_schema_object_to_js_arrays(schema: &Schema) -> JavaScriptType {
     if let Some(x) = schema.items.as_ref() {
         match x.as_ref() {
-            ObjectOrReference::Object(o) => parse_schema_object_to_javascript_type(o),
+            ObjectOrReference::Object(o) => parse_schema_object_to_js_type(o),
             ObjectOrReference::Ref(s) => JavaScriptType::Typename(parse_reference(&s.ref_path)),
         }
     } else {
@@ -24,7 +24,7 @@ fn parse_schema_object_to_javascript_arrays(schema: &Schema) -> JavaScriptType {
     }
 }
 
-fn parse_schema_object_to_javascript_strings(schema: &Schema) -> JavaScriptType {
+fn parse_schema_object_to_js_string(schema: &Schema) -> JavaScriptType {
     if let Some(enums) = schema.enum_values.as_ref() {
         JavaScriptType::Sum(
             enums
@@ -45,7 +45,7 @@ fn parse_schema_object_to_javascript_strings(schema: &Schema) -> JavaScriptType 
     }
 }
 
-fn parse_schema_object_to_javascript_row_triplets(schema: &Schema) -> HashMap<String, ObjectRow> {
+fn parse_schema_object_to_js_object_row(schema: &Schema) -> HashMap<String, ObjectRow> {
     // 1. Find the required properties.
     // 2. Iterate through properties.
     // 3. Parse each rows type, creating a triplet of (name, required, type)
@@ -60,7 +60,7 @@ fn parse_schema_object_to_javascript_row_triplets(schema: &Schema) -> HashMap<St
                     ObjectOrReference::Ref(r) => {
                         JavaScriptType::Typename(parse_reference(&r.ref_path))
                     }
-                    ObjectOrReference::Object(o) => parse_schema_object_to_javascript_type(o),
+                    ObjectOrReference::Object(o) => parse_schema_object_to_js_type(o),
                 };
                 (name.clone(), ObjectRow::from_data(row_required, ttype))
             })
@@ -71,7 +71,7 @@ fn parse_schema_object_to_javascript_row_triplets(schema: &Schema) -> HashMap<St
     }
 }
 
-fn parse_schema_object_to_enum_values(schema: &Schema) -> Vec<JavaScriptType> {
+fn parse_schema_object_to_js_enum_values(schema: &Schema) -> Vec<JavaScriptType> {
     if let Some(values) = schema.enum_values.as_ref() {
         values
             .iter()
@@ -83,24 +83,19 @@ fn parse_schema_object_to_enum_values(schema: &Schema) -> Vec<JavaScriptType> {
 }
 
 // TODO(hbina): Reimplement this to return an intermediate object so we can log the transformation.
-pub fn parse_schema_object_to_javascript_type(schema: &Schema) -> JavaScriptType {
-    // 1. Determine the schema type
-    // 2. Call the corresponding functions
-
+pub fn parse_schema_object_to_js_type(schema: &Schema) -> JavaScriptType {
     if let Some(ty) = schema.schema_type.as_ref() {
         match ty.as_str() {
-            "array" => {
-                JavaScriptType::Array(Box::new(parse_schema_object_to_javascript_arrays(schema)))
+            "array" => JavaScriptType::Array(Box::new(parse_schema_object_to_js_arrays(schema))),
+            "string" => parse_schema_object_to_js_string(schema),
+            "object" => {
+                JavaScriptType::AnonymousObject(parse_schema_object_to_js_object_row(schema))
             }
-            "string" => parse_schema_object_to_javascript_strings(schema),
-            "object" => JavaScriptType::AnonymousObject(
-                parse_schema_object_to_javascript_row_triplets(schema),
-            ),
             // TODO(hbina): Narrow down the exact type later.
             "integer" | "number" => JavaScriptType::typename("number"),
             "boolean" => JavaScriptType::typename("boolean"),
             "unknown" => JavaScriptType::typename("unknown"),
-            "enum" => JavaScriptType::Sum(parse_schema_object_to_enum_values(schema)),
+            "enum" => JavaScriptType::Sum(parse_schema_object_to_js_enum_values(schema)),
             // TODO(hbina): It is entirely possile type of a schema object to just be a string.
             // I should think.
             // Actually, this case should not even be possible because `types` can take a limited set of values.
@@ -118,13 +113,13 @@ pub fn parse_schema_object_to_javascript_type(schema: &Schema) -> JavaScriptType
     }
 }
 
-pub fn parse_root_schema(
+pub fn parse_schema(
     (name, schema): (&String, &ObjectOrReference<Schema>),
 ) -> (String, JavaScriptType) {
     let name = name.to_string();
     let ttype = match schema {
         ObjectOrReference::Ref(s) => JavaScriptType::Typename(parse_reference(&s.ref_path)),
-        ObjectOrReference::Object(v) => parse_schema_object_to_javascript_type(v),
+        ObjectOrReference::Object(v) => parse_schema_object_to_js_type(v),
     };
     (name, ttype)
 }
@@ -132,7 +127,7 @@ pub fn parse_root_schema(
 pub fn use_spec3(spec: &Spec3) -> Vec<(String, JavaScriptType)> {
     if let Some(components) = spec.components.as_ref() {
         if let Some(schemas) = components.schemas.as_ref() {
-            schemas.iter().map(parse_root_schema).collect()
+            schemas.iter().map(parse_schema).collect()
         } else {
             vec![]
         }
