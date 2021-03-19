@@ -199,7 +199,7 @@ pub fn filter_empty_types(tt: &JavaScriptType) -> Option<JavaScriptType> {
         }
         JavaScriptType::AnonymousObject(o) => {
             let result = o
-                .into_iter()
+                .iter()
                 .filter_map(|(k, v)| {
                     filter_empty_types(&v.ttype)
                         .map(|tt| (k.clone(), ObjectRow::from_data(v.required, tt)))
@@ -216,10 +216,7 @@ pub fn filter_empty_types(tt: &JavaScriptType) -> Option<JavaScriptType> {
     }
 }
 
-pub fn filter_unwanted_types(
-    tt: &JavaScriptType,
-    skip_types: &Vec<&str>,
-) -> Option<JavaScriptType> {
+pub fn filter_unwanted_types(tt: &JavaScriptType, skip_types: &[&str]) -> Option<JavaScriptType> {
     match tt {
         JavaScriptType::Array(t) => {
             filter_unwanted_types(&*t, skip_types).map(|t| JavaScriptType::Array(Box::new(t)))
@@ -250,7 +247,7 @@ pub fn filter_unwanted_types(
         }
         JavaScriptType::AnonymousObject(o) => {
             let result = o
-                .into_iter()
+                .iter()
                 .filter_map(|(k, v)| {
                     filter_unwanted_types(&v.ttype, skip_types)
                         .map(|tt| (k.clone(), ObjectRow::from_data(v.required, tt)))

@@ -62,7 +62,7 @@ fn parse_schema_object_to_js_object_row(schema: &Schema) -> HashMap<String, Obje
                     }
                     ObjectOrReference::Object(o) => parse_schema_object_to_js_type(o),
                 };
-                (name.clone(), ObjectRow::from_data(row_required, ttype))
+                (name, ObjectRow::from_data(row_required, ttype))
             })
             .collect::<HashMap<_, _>>();
         result
@@ -153,7 +153,7 @@ fn parse_json_value_to_javascript_type(v: &serde_yaml::Value) -> JavaScriptValue
                     serde_yaml::Value::String(s) => Some((s, v)),
                     _ => {
                         eprintln!("error:\n{}value:\n{:#?}", INVALID_KEY_TYPE_ERROR, k);
-                        return None;
+                        None
                     }
                 })
                 .map(|(name, value)| (name.clone(), parse_json_value_to_javascript_type(value)))

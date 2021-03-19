@@ -85,16 +85,15 @@ Takes multiple occurences."#)
             openapi::from_bytes(&res)
         } else {
             eprintln!("Http request failed with response:\n{:#?}", res);
-            return ();
+            return;
         }
     } else if matches.is_present("stdin") {
         let mut buffer = String::new();
         std::io::Read::read_to_string(&mut std::io::stdin(), &mut buffer).unwrap();
-        let result = serde_yaml::from_str(&buffer).unwrap();
-        result
+        serde_yaml::from_str(&buffer).unwrap()
     } else {
         eprintln!("Please enter an input with '--input' or '--stdin'. See help for more info.");
-        return ();
+        return;
     };
     let skip = matches.is_present("skip-empty-types");
     let typenames_to_skip = matches
