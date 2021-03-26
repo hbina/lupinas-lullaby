@@ -41,19 +41,22 @@ pub fn use_spec(spec: &OpenApi, skip_empty: bool, skip_types: Vec<&str>) -> Stri
         OpenApi::V2(spec) => use_spec2(spec),
         OpenApi::V3(spec) => use_spec3(spec),
     };
-    types
-        .into_iter()
-        .filter_map(|(name, tt)| {
-            if skip_empty {
-                filter_empty_types(&tt).map(|tt| (name, tt))
-            } else {
-                Some((name, tt))
-            }
-        })
-        .filter_map(|(name, tt)| filter_unwanted_types(&tt, &skip_types).map(|tt| (name, tt)))
-        .map(|(name, ttype)| format!("export type {} = {};", name, ttype))
-        .collect::<Vec<String>>()
-        .join("\n")
+    format!(
+        "// This file was generated using https://crates.io/crates/lupinas-lullaby\n{}",
+        types
+            .into_iter()
+            .filter_map(|(name, tt)| {
+                if skip_empty {
+                    filter_empty_types(&tt).map(|tt| (name, tt))
+                } else {
+                    Some((name, tt))
+                }
+            })
+            .filter_map(|(name, tt)| filter_unwanted_types(&tt, &skip_types).map(|tt| (name, tt)))
+            .map(|(name, ttype)| format!("export type {} = {};", name, ttype))
+            .collect::<Vec<String>>()
+            .join("\n")
+    )
 }
 
 #[test]

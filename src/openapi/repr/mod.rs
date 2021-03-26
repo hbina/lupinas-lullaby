@@ -123,11 +123,11 @@ impl std::fmt::Display for JavaScriptType {
                 }
                 JavaScriptType::AnonymousObject(o) => {
                     format!(
-                        "{{{}}}",
+                        "{{\n{}\n}}",
                         o.iter()
                             .map(|(k, v)| {
                                 format!(
-                                    "{} {} : {};",
+                                    "\t{} {} : {};",
                                     k,
                                     if v.required { "" } else { "?" },
                                     v.ttype
