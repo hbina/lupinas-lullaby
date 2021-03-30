@@ -127,7 +127,7 @@ impl std::fmt::Display for JavaScriptType {
                         o.iter()
                             .map(|(k, v)| {
                                 format!(
-                                    "\t{} {} : {};",
+                                    r##"\t"{}" {} : {};"##,
                                     k,
                                     if v.required { "" } else { "?" },
                                     v.ttype
