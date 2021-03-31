@@ -119,7 +119,7 @@ impl std::fmt::Display for JavaScriptType {
             "{}",
             match self {
                 JavaScriptType::Array(o) => {
-                    format!("{}[]", o)
+                    format!("({})[]", o)
                 }
                 JavaScriptType::AnonymousObject(o) => {
                     format!(
@@ -127,7 +127,7 @@ impl std::fmt::Display for JavaScriptType {
                         o.iter()
                             .map(|(k, v)| {
                                 format!(
-                                    r##"\t"{}" {} : {};"##,
+                                    "\t'{}' {} : {};",
                                     k,
                                     if v.required { "" } else { "?" },
                                     v.ttype

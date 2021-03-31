@@ -100,10 +100,7 @@ pub fn parse_schema_object_to_js_type(schema: &Schema) -> JavaScriptType {
             // I should think.
             // Actually, this case should not even be possible because `types` can take a limited set of values.
             // Rework `openapi` to make this unrepresentable.
-            _ => unimplemented!(
-                r##"attempting to parse schema with unknown type. schema:{:#?}"##,
-                schema
-            ),
+            anon => JavaScriptType::Typename(anon.to_string()),
         }
     } else {
         // TODO(hbina): Revisit this case.
