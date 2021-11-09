@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use super::spec::{ObjectOrReference, Schema, Spec3};
-use crate::repr::{JavaScriptType, JavaScriptValue, ObjectRow};
+use crate::repr::{JavaScriptType, JavaScriptValue};
 
 pub fn parse_reference(reference: &str) -> String {
     let (prefix, name) = reference.split_at("#/components/schemas/".len());
@@ -45,7 +45,9 @@ fn parse_schema_object_to_js_string(schema: &Schema) -> JavaScriptType {
     }
 }
 
-fn parse_schema_object_to_js_object_row(schema: &Schema) -> HashMap<String, ObjectRow> {
+fn parse_schema_object_to_js_object_row(
+    schema: &Schema,
+) -> HashMap<String, (bool, JavaScriptType)> {
     // 1. Find the required properties.
     // 2. Iterate through properties.
     // 3. Parse each rows type, creating a triplet of (name, required, type)
@@ -56,13 +58,13 @@ fn parse_schema_object_to_js_object_row(schema: &Schema) -> HashMap<String, Obje
             .map(|(name, object)| {
                 let name = name.to_string();
                 let row_required = required.map(|r| r.contains(&name)).unwrap_or(false);
-                let ttype = match object {
+                let jtype = match object {
                     ObjectOrReference::Ref(r) => {
                         JavaScriptType::Typename(parse_reference(&r.ref_path))
                     }
                     ObjectOrReference::Object(o) => parse_schema_object_to_js_type(o),
                 };
-                (name, ObjectRow::from_data(row_required, ttype))
+                (name, (row_required, jtype))
             })
             .collect::<HashMap<_, _>>();
         result
@@ -114,11 +116,11 @@ pub fn parse_schema(
     (name, schema): (&String, &ObjectOrReference<Schema>),
 ) -> (String, JavaScriptType) {
     let name = name.to_string();
-    let ttype = match schema {
+    let jtype = match schema {
         ObjectOrReference::Ref(s) => JavaScriptType::Typename(parse_reference(&s.ref_path)),
         ObjectOrReference::Object(v) => parse_schema_object_to_js_type(v),
     };
-    (name, ttype)
+    (name, jtype)
 }
 
 pub fn use_spec3(spec: &Spec3) -> Vec<(String, JavaScriptType)> {

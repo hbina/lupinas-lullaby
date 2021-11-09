@@ -1,20 +1,22 @@
 use std::collections::HashMap;
 
 use super::spec::{Schema, Spec2};
-use crate::repr::{JavaScriptType, JavaScriptValue, ObjectRow};
+use crate::repr::{JavaScriptType, JavaScriptValue};
 
 // TODO: Validate type at root is object?
-pub fn convert_schema_to_js_object_rows(schema: &Schema) -> HashMap<String, ObjectRow> {
+pub fn convert_schema_to_js_object_rows(
+    schema: &Schema,
+) -> HashMap<String, (bool, JavaScriptType)> {
     if let Some(properties) = schema.properties.as_ref() {
         let required_names = schema.required.as_ref();
         let properties = properties
             .iter()
             .map(|(name, schema)| {
                 let required = required_names.map(|x| x.contains(&name)).unwrap_or(false);
-                let ttype = convert_schema_type_to_js_type(schema);
-                (name.clone(), ObjectRow::from_data(required, ttype))
+                let jtype = convert_schema_type_to_js_type(schema);
+                (name.clone(), (required, jtype))
             })
-            .collect::<HashMap<_, ObjectRow>>();
+            .collect::<HashMap<_, _>>();
         properties
     } else {
         HashMap::new()
@@ -31,8 +33,8 @@ pub fn convert_schema_type_to_js_type(schema: &Schema) -> JavaScriptType {
                 .map(convert_schema_type_to_js_type)
                 .collect::<Vec<_>>(),
         )
-    } else if let Some(ttype) = schema.schema_type.as_ref() {
-        match ttype.as_str() {
+    } else if let Some(jtype) = schema.schema_type.as_ref() {
+        match jtype.as_str() {
             "integer" | "number" => JavaScriptType::typename("number"),
             "string" => {
                 if let Some(enums) = schema.enum_values.as_ref() {
@@ -72,8 +74,8 @@ pub fn convert_schema_type_to_js_type(schema: &Schema) -> JavaScriptType {
 
 pub fn parse_schema((name, schema): (&String, &Schema)) -> (String, JavaScriptType) {
     let name = name.to_string();
-    let ttype = convert_schema_type_to_js_type(schema);
-    (name, ttype)
+    let jtype = convert_schema_type_to_js_type(schema);
+    (name, jtype)
 }
 
 pub fn parse_reference(reference: &str) -> String {

@@ -53,7 +53,7 @@ pub fn use_spec(spec: &OpenApi, skip_empty: bool, skip_types: Vec<&str>) -> Stri
                 }
             })
             .filter_map(|(name, tt)| filter_unwanted_types(&tt, &skip_types).map(|tt| (name, tt)))
-            .map(|(name, ttype)| format!("export type {} = {};", name, ttype))
+            .map(|(name, jtype)| format!("export type {} = {};", name, jtype))
             .collect::<Vec<String>>()
             .join("\n")
     )

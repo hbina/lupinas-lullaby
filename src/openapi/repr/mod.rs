@@ -102,7 +102,7 @@ pub enum JavaScriptType {
     Product(Vec<JavaScriptType>),
     Sum(Vec<JavaScriptType>),
     Typename(String),
-    AnonymousObject(HashMap<String, ObjectRow>),
+    AnonymousObject(HashMap<String, (bool, JavaScriptType)>),
     Value(Box<JavaScriptValue>),
 }
 
@@ -126,12 +126,7 @@ impl std::fmt::Display for JavaScriptType {
                         "{{\n{}\n}}",
                         o.iter()
                             .map(|(k, v)| {
-                                format!(
-                                    "\t'{}' {} : {};",
-                                    k,
-                                    if v.required { "" } else { "?" },
-                                    v.ttype
-                                )
+                                format!("\t'{}' {} : {};", k, if v.0 { "" } else { "?" }, v.1)
                             })
                             .collect::<Vec<String>>()
                             .join("\n")
@@ -155,18 +150,6 @@ impl std::fmt::Display for JavaScriptType {
                 }
             }
         )
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ObjectRow {
-    pub required: bool,
-    pub ttype: JavaScriptType,
-}
-
-impl ObjectRow {
-    pub fn from_data(required: bool, ttype: JavaScriptType) -> ObjectRow {
-        ObjectRow { required, ttype }
     }
 }
 
@@ -200,10 +183,7 @@ pub fn filter_empty_types(tt: &JavaScriptType) -> Option<JavaScriptType> {
         JavaScriptType::AnonymousObject(o) => {
             let result = o
                 .iter()
-                .filter_map(|(k, v)| {
-                    filter_empty_types(&v.ttype)
-                        .map(|tt| (k.clone(), ObjectRow::from_data(v.required, tt)))
-                })
+                .filter_map(|(k, v)| filter_empty_types(&v.1).map(|tt| (k.clone(), (v.0, tt))))
                 .collect::<HashMap<_, _>>();
             if result.is_empty() {
                 None
@@ -249,8 +229,7 @@ pub fn filter_unwanted_types(tt: &JavaScriptType, skip_types: &[&str]) -> Option
             let result = o
                 .iter()
                 .filter_map(|(k, v)| {
-                    filter_unwanted_types(&v.ttype, skip_types)
-                        .map(|tt| (k.clone(), ObjectRow::from_data(v.required, tt)))
+                    filter_unwanted_types(&v.1, skip_types).map(|tt| (k.clone(), (v.0, tt)))
                 })
                 .collect::<HashMap<_, _>>();
             if result.is_empty() {
